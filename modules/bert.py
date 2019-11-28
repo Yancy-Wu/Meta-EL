@@ -4,8 +4,8 @@
 
 import torch
 from torch import nn
-from pytorch_transformers import BertModel
-from META_EL.base.config import Config
+from pytorch_transformers import BertModel, BertConfig
+from base.config import Config
 
 class Bert(nn.Module, Config):
     '''
@@ -15,9 +15,16 @@ class Bert(nn.Module, Config):
     # pooling method, avail value: cls, avg
     POOLING_METHOD = 'avg'
 
+    # fine-tune layers
+    FINETUNE_LAYER_RANGE = '1:12'
+
+    # bert config
+    config: BertConfig = None
+
     def __init__(self, config=None):
         nn.Module.__init__(self)
         Config.__init__(self, config)
+        self._unfreeze(self.FINETUNE_LAYER_RANGE)
 
     @classmethod
     def from_pretrained(cls, model_dir, config=None):
@@ -25,9 +32,9 @@ class Bert(nn.Module, Config):
             load bert pre-train model from disk
             `model_dir`: model location
         '''
-        if not config:
-            config = dict()
-        config.update({'bert': BertModel.from_pretrained(model_dir)})
+        config = config if config else dict()
+        bert = BertModel.from_pretrained(model_dir)
+        config.update({'bert': bert, 'config': bert.config})
         return cls(config)
 
     # pylint: disable=arguments-differ
@@ -44,7 +51,7 @@ class Bert(nn.Module, Config):
         input_ids = input_ids.view(-1, seq_length)
         att_mask = att_mask.view(-1, seq_length)
         # retrieve bert embeddings: (count, sequence_length)
-        embs = self.bert(input_ids, att_mask)[0]
+        embs = self.bert.forward(input_ids, att_mask)[0]
         # use python reflection to call pooling
         pooling_func = getattr(self, f'_{self.POOLING_METHOD}_pooling')
         # re-size to origin
@@ -74,3 +81,29 @@ class Bert(nn.Module, Config):
         '''
         # select sequence_length dim first index(cls embs).
         return torch.index_select(embs, -2, 0).squeeze(-2)
+
+    def _unfreeze(self, layer_range: str):
+        """
+            set which layers can be fine-tuned
+            `layer_range`: to fine tune layer, such as 9:10
+        """
+        s = layer_range.split(':')
+        assert len(s) == 2
+        i = int(s[0])
+        j = int(s[1])
+
+        for p in self.bert.parameters():
+            p.requires_grad = False  # self.bert.pooler is off here
+
+        # embeddings
+        if i == 0:
+            # pylint: disable=no-member
+            for name, p in self.bert.embeddings.named_parameters():
+                p.requires_grad = True
+
+        # layers
+        for l in range(max(i - 1, 0), j):
+            # pylint: disable=no-member
+            for name, p in self.bert.encoder.named_parameters():
+                if str(l) in name:
+                    p.requires_grad = True

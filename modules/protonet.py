@@ -4,7 +4,7 @@
 
 import torch
 from torch import nn
-from META_EL.base.config import Config
+from base.config import Config
 
 class Protonet(nn.Module, Config):
     '''
@@ -42,4 +42,4 @@ class Protonet(nn.Module, Config):
         proto_embs = proto_embs.unsqueeze(-3)
         # shape: (**, query_num, example_emb_size) -> (**, query_num, 1, example_emb_size)
         query_embs = query_embs.unsqueeze(-2)
-        return ((proto_embs - query_embs) ** 2).sum(-1) ** 0.5
+        return -((proto_embs - query_embs) ** 2).sum(-1)
