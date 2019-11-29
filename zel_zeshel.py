@@ -3,10 +3,10 @@
 '''
 
 import torch
-from zel.trainer import Trainer
-from zel.similar_net import SimilarNet
+from utils.trainer import Trainer
+from zel.models.similar_net import SimilarNet
 from zel.prediction import Prediction
-from zel.adapter import Adapter
+from zel.zel_adapter import ZelAdapter
 from zel.datasets.zeshel import Zeshel
 from tensorizer.bert_tokenizer import EasyBertTokenizer
 from modules.bert import Bert
@@ -25,7 +25,7 @@ def main():
     })
 
     # adapter. call tensorizer, convert a batch of examples to big tensors.
-    adapter = Adapter(tensorizer, tensorizer)
+    adapter = ZelAdapter(tensorizer, tensorizer)
 
     # embedding model. for predication.
     bert = Bert.from_pretrained('../pretrain/uncased_L-12_H-768_A-12', {

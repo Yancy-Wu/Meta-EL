@@ -3,7 +3,7 @@
     all UPPERCASE variable are super parameters.
 '''
 from typing import List, Any, Tuple
-from base.config import Config
+from base.dataset import Dataset
 
 class Example():
     ''' Example like this: (query, candidate) -> y '''
@@ -20,26 +20,26 @@ class Example():
         self.candidate = candidate
         self.y = y
 
-class Datasets(Config):
+class ZelDataset(Dataset):
     '''
-        dataset interface.
+        zel dataset interface.
     '''
 
-    def train_examples(self) -> List[Example]:
+    def train_data(self) -> List[Example]:
         '''
             generate examples for training.
             `return` Examples[], length is as much as possible.
         '''
         raise NotImplementedError
 
-    def valid_examples(self) -> List[Example]:
+    def valid_data(self) -> List[Example]:
         '''
             generate tasks for validating.
             `return` Examples[], length is as much as possible.
         '''
         raise NotImplementedError
 
-    def test_examples(self) -> List[Example]:
+    def test_data(self) -> List[Example]:
         '''
             get tasks for testing.
             `return` Examples[], length is as much as possible.

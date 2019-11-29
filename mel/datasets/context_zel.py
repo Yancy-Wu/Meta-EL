@@ -7,17 +7,18 @@
 '''
 import random
 from typing import List
+from tqdm import trange
 import pandas
-from . import Datasets, Way, Task, Example, Shot
+from . import MelDataset, Way, Task, Example
 
-class ContextZel(Datasets):
+class ContextZel(MelDataset):
     '''
         [DESCRIPTION]
           step 1: random sample mention examples from 'mentions.csv' as query set
           step 2: fetch corresponding label_document text and title
                 and random sample negative document as support set
         [PARAMS]
-          `root`: zel datasets dir location.
+          `root`: context zel datasets dir location.
     '''
 
     # portion of examples for generating training tasks
@@ -69,14 +70,11 @@ class ContextZel(Datasets):
         # generate query shots
         for _, _shot in query_shots.iterrows():
             x = _shot['LCONTEXT'] + '[SEP]' + _shot['MENTION'] + '[SEP]' + _shot['RCONTEXT']
-            task.query.append(Example(Shot(x, None), _shot['ID']))
+            task.query.append(Example(x, _shot['ID']))
 
         # generate support ways
         for _, _shot in support_ways.iterrows():
-            task.support.append(Way([
-                Shot(_shot['TITLE'], None),
-                Shot(_shot['TEXT'], None)
-            ], _shot['ID']))
+            task.support.append(Way([_shot['TITLE'], _shot['TEXT']], _shot['ID']))
 
         # shuffle
         random.shuffle(task.query)
@@ -84,14 +82,18 @@ class ContextZel(Datasets):
         return task
 
     # sample an task from train DataFrame
-    def train_tasks(self) -> List[Task]:
-        for _ in range(0, self.TRAIN_TASKS_NUM):
-            yield self._sample_task(self._train)
+    def train_data(self) -> List[Task]:
+        progress = trange(0, len(self.TRAIN_TASKS_NUM))
+        tasks = [self._sample_task(self._train) for _ in progress]
+        progress.close()
+        return tasks
 
     # sample an task from valid DataFrame
-    def valid_tasks(self) -> List[Task]:
-        for _ in range(0, self.VALID_TASKS_NUM):
-            yield self._sample_task(self._valid)
+    def valid_data(self) -> List[Task]:
+        progress = trange(0, len(self.VALID_TASKS_NUM))
+        tasks = [self._sample_task(self._valid) for _ in progress]
+        progress.close()
+        return tasks
 
-    def test_tasks(self) -> List[Task]:
+    def test_data(self) -> List[Task]:
         pass

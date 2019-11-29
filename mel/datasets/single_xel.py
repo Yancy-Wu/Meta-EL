@@ -7,10 +7,11 @@
 '''
 import random
 from typing import List
+from tqdm import trange
 import pandas
-from . import Datasets, Way, Task, Example, Shot
+from . import MelDataset, Way, Task, Example
 
-class SingleXel(Datasets):
+class SingleXel(MelDataset):
     '''
         [NOTE]: we do not differentiate WAYS and CLASSES.
         xel single datasets implementation.
@@ -73,12 +74,12 @@ class SingleXel(Datasets):
 
         # generate query shots and corresponding support ways
         for _, _shot in query_shots.iterrows():
-            task.query.append(Example(Shot(_shot['LRL_NAME'], None), _shot['ID']))
-            task.support.append(Way([Shot(_shot['EN_NAME'], None)], _shot['ID']))
+            task.query.append(Example(_shot['LRL_NAME'], _shot['ID']))
+            task.support.append(Way([_shot['EN_NAME']], _shot['ID']))
 
         # pad support ways
         for _, _shot in support_ways.iterrows():
-            task.support.append(Way([Shot(_shot['EN_NAME'], None)], _shot['ID']))
+            task.support.append(Way([_shot['EN_NAME']], _shot['ID']))
 
         # shuffle
         random.shuffle(task.query)
@@ -86,14 +87,18 @@ class SingleXel(Datasets):
         return task
 
     # sample an task from train DataFrame
-    def train_tasks(self) -> List[Task]:
-        for _ in range(0, self.TRAIN_TASKS_NUM):
-            yield self._sample_task(self._train)
+    def train_data(self) -> List[Task]:
+        progress = trange(0, len(self.TRAIN_TASKS_NUM))
+        tasks = [self._sample_task(self._train) for _ in progress]
+        progress.close()
+        return tasks
 
     # sample an task from valid DataFrame
-    def valid_tasks(self) -> List[Task]:
-        for _ in range(0, self.VALID_TASKS_NUM):
-            yield self._sample_task(self._valid)
+    def valid_data(self) -> List[Task]:
+        progress = trange(0, len(self.VALID_TASKS_NUM))
+        tasks = [self._sample_task(self._valid) for _ in progress]
+        progress.close()
+        return tasks
 
-    def test_tasks(self) -> List[Task]:
+    def test_data(self) -> List[Task]:
         pass

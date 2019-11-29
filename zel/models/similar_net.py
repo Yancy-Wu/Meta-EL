@@ -57,11 +57,10 @@ class SimilarNet(nn.Module, Config):
               input query tensors(will be parsed by query_model), and candidate tensors.
               output probability where query and candidate pair is same.
             [PARAMS]
-              ** stand for any dim. but must be same.
-              `query_tensor_map` item shape: must meet `type(query_model)` requirements.
-              `candidate_tensor_map` item shape`: must meet `type(candidate_model)` requirements.
-              query_model and candidate_model return shape: [query(candidate)_num, hidden_size]
-              `return shape`: [query(candidate)_num]
+              `query_tensor_map` item shape: [batch_num, query_seq_len]
+              `candidate_tensor_map` item shape`: [batch_num, candidate_seq_len]
+              query_model and candidate_model return shape: [batch_num, hidden_size]
+              `return shape`: [batch_num]
         '''
         # generate all embeddings
         query_emb = self.query_model.forward(**query_tensor_map)

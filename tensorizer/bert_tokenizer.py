@@ -5,7 +5,7 @@
 from typing import Dict
 from pytorch_transformers import BertTokenizer
 import torch
-from . import Tensorizer
+from base.tensorizer import Tensorizer
 
 class EasyBertTokenizer(Tensorizer):
     '''

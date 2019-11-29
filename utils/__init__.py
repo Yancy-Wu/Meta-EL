@@ -3,21 +3,6 @@
 '''
 
 from typing import List, Tuple, Any
-import torch
-
-def dict_to_device(d: dict, device: torch.device) -> dict:
-    '''
-        send a dict of tensors to device.
-        using dfs, return d
-    '''
-    if torch.is_tensor(d):
-        d = d.to(device)
-    elif isinstance(d, dict):
-        for key, val in d.items():
-            d[key] = dict_to_device(val, device)
-    else:
-        raise AssertionError('not a tensor dict!')
-    return d
 
 def dict_to_kvlist(d: dict, sep='|') -> Tuple[List[str], List[Any]]:
     '''
@@ -64,4 +49,13 @@ def kvlist_to_dict(keys: List[str], vals: List[Any], sep='|') -> dict:
         _recover(key.split(sep), val, res)
 
     return res
-        
+
+def deep_apply_dict(d: dict(), func: type(lambda k, v: None)):
+    '''
+        travel dict deeply, apply func to all value.
+    '''
+    for key, val in d.items():
+        if isinstance(val, dict):
+            deep_apply_dict(val, func)
+        else:
+            d[key] = func(key, val)

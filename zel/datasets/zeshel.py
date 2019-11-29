@@ -8,9 +8,9 @@ from typing import List, Tuple, Any
 import random
 from tqdm import trange
 import pandas
-from . import Datasets, Example
+from . import ZelDataset
 
-class Zeshel(Datasets):
+class Zeshel(ZelDataset):
     '''
         [DESCRIPTION]
           step 1: sample positive from all.json
@@ -74,7 +74,7 @@ class Zeshel(Datasets):
         doc_id = mention_record['label_document_id']
         return self._doc.loc[doc_id]
 
-    def train_examples(self) -> List[Example]:
+    def train_data(self) -> List[Example]:
         examples = []
         # generate examples 1:1 pos and neg
         progress = trange(0, len(self._train))
@@ -86,7 +86,7 @@ class Zeshel(Datasets):
         progress.close()
         return examples
 
-    def valid_examples(self) -> List[Example]:
+    def valid_data(self) -> List[Example]:
         examples = []
         # all positive
         progress = trange(0, len(self._valid))
@@ -96,5 +96,5 @@ class Zeshel(Datasets):
         progress.close()
         return examples
 
-    def test_examples(self) -> List[Example]:
+    def test_data(self) -> List[Example]:
         pass

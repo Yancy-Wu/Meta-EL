@@ -9,11 +9,12 @@ import random
 import json
 import logging
 from typing import List
-from . import Datasets, Way, Task, Example, Shot
+from tqdm import trange
+from . import MelDataset, Way, Task, Example
 
 LOGGER = logging.getLogger(__name__)
 
-class Zeshel(Datasets):
+class Zeshel(MelDataset):
     '''
         [NOTE]: we do not differentiate WAYS and CLASSES.
         zeshel datasets implementation.
@@ -67,10 +68,7 @@ class Zeshel(Datasets):
                 continue
 
             # generate new way
-            avail_ways.append(Way(
-                shots=[Shot(_shot['mention'], _shot) for _shot in _shots],
-                y=_y
-            ))
+            avail_ways.append(Way([_shot['mention'] for _shot in _shots], _y))
 
         return avail_ways
 
@@ -94,14 +92,18 @@ class Zeshel(Datasets):
         return task
 
     # sample an task from train ways
-    def train_tasks(self) -> List[Task]:
-        for _ in range(0, self.TRAIN_TASKS_NUM):
-            yield self._sample_task(self._train_ways)
+    def train_data(self) -> List[Task]:
+        progress = trange(0, len(self.TRAIN_TASKS_NUM))
+        tasks = [self._sample_task(self._train_ways) for _ in progress]
+        progress.close()
+        return tasks
 
     # sample an task from valid ways
-    def valid_tasks(self) -> List[Task]:
-        for _ in range(0, self.VALID_TASKS_NUM):
-            yield self._sample_task(self._train_ways)
+    def valid_data(self) -> List[Task]:
+        progress = trange(0, len(self.VALID_TASKS_NUM))
+        tasks = [self._sample_task(self._valid_ways) for _ in progress]
+        progress.close()
+        return tasks
 
-    def test_tasks(self) -> List[Task]:
+    def test_data(self) -> List[Task]:
         return self._test_tasks

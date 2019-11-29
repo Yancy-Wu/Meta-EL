@@ -3,9 +3,10 @@
     ICLR 2017.
 '''
 
+from typing import Dict
 import torch
 from torch import nn
-from modules import bert, protonet
+from modules.protonet import Protonet
 
 class PrototypicalNetwork(nn.Module):
     '''
@@ -15,25 +16,25 @@ class PrototypicalNetwork(nn.Module):
         see META_EL.modules.bert for detail config parameters.
     '''
 
-    def __init__(self, pretrain_bert_dir, config=None):
+    def __init__(self, support_model: nn.Module, query_model: nn.Module):
         super().__init__()
-        conf = config if config else dict()
-        self.bert = bert.Bert.from_pretrained(pretrain_bert_dir, conf.get('bert', None))
-        self.protonet = protonet.Protonet(conf.get('protonet', None))
+        self.support_model = support_model
+        self.query_model = query_model
+        self.protonet = Protonet()
 
     # pylint: disable=arguments-differ
-    def forward(self, support_input_ids: torch.LongTensor, support_att_mask: torch.LongTensor,
-                query_input_ids: torch.LongTensor, query_att_mask: torch.LongTensor):
+    def forward(self, support_tensor_map: Dict[str, torch.LongTensor],
+                query_tensor_map: Dict[str, torch.LongTensor]):
         '''
-            `support_input_ids shape`: (tasks_num, ways_num, shots_num, sequence_length)
-            `support_att_masks shape`: (tasks_num, ways_num, shots_num, sequence_length)
-            `query_input_ids shape`: (tasks_num, query_num, sequence_length)
-            `query_att_masks shape`: (tasks_num, query_num, sequence_length)
-            `return shape`: (tasks_num, query_num, ways_num), no softmax.
+            [DESCRIPTION]
+              for each query item, return its p2 distance in terms of support proto.
+            [PARAMS]
+              `support_tensor_map item shape`: (tasks_num, ways_num, shots_num, support_seq_length)
+              `query_tensor_map item shape`: (tasks_num, query_num, query_seq_length)
+              `return shape`: (tasks_num, query_num, ways_num), no softmax.
         '''
-        # support_embs: (tasks_num, ways_num, shots_num, hidden_size)
-        # query_embs: (tasks_num, query_num, hidden_size)
-        support_embs = self.bert.forward(support_input_ids, support_att_mask)
-        query_embs = self.bert.forward(query_input_ids, query_att_mask)
+        # generate all embeddings
+        support_embs = self.support_model.forward(**support_tensor_map)
+        query_embs = self.query_model.forward(**query_tensor_map)
         # return protonet distance
         return self.protonet.forward(support_embs, query_embs)

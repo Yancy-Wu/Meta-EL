@@ -7,7 +7,7 @@ from typing import Dict, List
 import torch
 from torch.utils.data.dataset import TensorDataset
 from torch.utils.data.dataloader import DataLoader
-from . import utils
+import utils
 
 class DictDataLoader():
     '''

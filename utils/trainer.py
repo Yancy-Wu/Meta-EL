@@ -1,19 +1,16 @@
 '''
-    a pipeline for pluggable zel trainer modules.
+    a pipeline for pluggable zel and mel trainer modules.
 '''
 
-import logging
 import torch
+import torch.nn
 import torch.nn.functional as F
 from pytorch_transformers import AdamW
 from base.config import Config
-from base.dataloader import DictDataLoader
-from base.utils import dict_to_device
-from .datasets import Datasets
-from .adapter import Adapter
-from .similar_net import SimilarNet
-
-LOGGER = logging.getLogger(__name__)
+from base.dataset import Dataset
+from base.adapter import Adapter
+from utils.dataloader import DictDataLoader
+from utils import deep_apply_dict
 
 class Trainer(Config):
     '''
@@ -26,9 +23,9 @@ class Trainer(Config):
     '''
 
     # all component here. please set me.
-    dataset: Datasets = None
+    dataset: Dataset = None
     adapter: Adapter = None
-    model: SimilarNet = None
+    model: torch.nn.Module = None
 
     # useful member.
     train_loader: DictDataLoader = None
@@ -52,9 +49,9 @@ class Trainer(Config):
 
         # generating train tensors
         print('[TRAINER]: generating train loader')
-        train_examples = self.dataset.train_examples()
-        print('[TRAINER]: converting train examples to tensors:')
-        train_tensors_map = self.adapter.generate_example_tensors(train_examples)
+        train_data = self.dataset.train_data()
+        print('[TRAINER]: converting train data to tensors:')
+        train_tensors_map = self.adapter.generate_tensors(train_data)
         self.train_loader = DictDataLoader(train_tensors_map, {
             'batch_size': self.TRAIN_BATCH_SIZE,
             'shuffle': True
@@ -62,9 +59,9 @@ class Trainer(Config):
 
         # generating validation tensors
         print('\n[TRAINER]: generating val loader:')
-        valid_examples = self.dataset.valid_examples()
-        print('[TRAINER]: converting val examples to tensors:')
-        valid_tensors_map = self.adapter.generate_example_tensors(valid_examples)
+        valid_data = self.dataset.train_data()
+        print('[TRAINER]: converting val data to tensors:')
+        valid_tensors_map = self.adapter.generate_tensors(valid_data)
         self.valid_loader = DictDataLoader(valid_tensors_map, {
             'batch_size': self.VALID_BATCH_SIZE,
             'shuffle': True
@@ -75,7 +72,7 @@ class Trainer(Config):
         overall_num = 0
         overall_correct_num = 0
         for batch in self.valid_loader:
-            dict_to_device(batch, self.DEVICE)
+            deep_apply_dict(batch, lambda _, v: v.to(self.DEVICE))
             y = batch.pop('y')
             res = self.model.forward(**batch)
             predict_y = torch.argmax(res, dim=-1)
@@ -92,11 +89,10 @@ class Trainer(Config):
         optimizer = AdamW([p for p in self.model.parameters() if p.requires_grad], lr=1e-5)
         for round_num in range(0, self.ROUND):
             for step, batch in enumerate(self.train_loader):
-                dict_to_device(batch, self.DEVICE)
-                # input size: [batch_size, seq_length], label size: [batch_size]
-                y = batch.pop('y')
+                deep_apply_dict(batch, lambda _, v: v.to(self.DEVICE))
+                y = batch.pop('y').view(-1)
                 res = self.model.forward(**batch)
-                # res size: [batch_size, 2]
+                res = res.view(-1, res.size(-1))
                 loss = F.cross_entropy(res, y)
                 print(f'[round: {round_num}]: {step}/{len(self.train_loader)} end. loss: {loss}')
                 optimizer.zero_grad()

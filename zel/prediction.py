@@ -9,10 +9,10 @@ import numpy
 import torch
 import torch.nn.functional as F
 from base.config import Config
-from base.utils import dict_to_device
-from base.dataloader import DictDataLoader
-from .adapter import Adapter
-from .similar_net import SimilarNet
+from base.adapter import Adapter
+from utils import deep_apply_dict
+from utils.dataloader import DictDataLoader
+from .models.similar_net import SimilarNet
 
 class Prediction(Config):
     '''
@@ -28,9 +28,6 @@ class Prediction(Config):
 
     # return top K candidate
     TOP_K = 32
-
-    # num of query predict batch num
-    # QUERY_BATCH_NUM = 100
 
     # batch size when generating
     EMB_BATCH_SIZE = 1000
@@ -71,7 +68,7 @@ class Prediction(Config):
         with torch.no_grad():
             for batch, _ in zip(dataloader, progress):
                 # send to device, call model.
-                dict_to_device(batch, self.DEVICE)
+                deep_apply_dict(batch, lambda _, v: v.to(self.DEVICE))
                 embs = getattr(self.similar_net, f'{what}_model')(**batch)
                 embs_list.append(F.normalize(embs))
 
