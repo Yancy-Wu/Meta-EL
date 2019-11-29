@@ -16,7 +16,7 @@ class DictDataLoader():
           we create this class.
         [PARAMS]
           `tensors_dict`: a group of tensors with key. first dim of tensor must same(for sampling).
-          `batch_size`: the size of return tensor dicts first dim.
+          `dl_config`: dataloader config, see Dataloader for detail.
     '''
 
     # tensors key list
@@ -25,12 +25,12 @@ class DictDataLoader():
     # dataloader
     dataloader = None
 
-    def __init__(self, tensors_dict: Dict[str, torch.Tensor], batch_size: int):
+    def __init__(self, tensors_dict: Dict[str, torch.Tensor], dl_config: dict()):
         # generate kv list.
         self.key_list, tensors_list = utils.dict_to_kvlist(tensors_dict)
         # load tensors.
         datasets = TensorDataset(*tensors_list)
-        self.dataloader = DataLoader(datasets, batch_size=batch_size, shuffle=True)
+        self.dataloader = DataLoader(datasets, **dl_config)
 
     def __iter__(self):
         return DictDataLoaderIter(self)

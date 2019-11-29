@@ -45,27 +45,28 @@ def main():
         'dataset': dataset,
         'adapter': adapter,
         'model': model,
-        'DEVICE': torch.device('cuda:0'),
+        'DEVICE': torch.device('cuda:2'),
         'TRAIN_BATCH_SIZE': 100,
         'VALID_BATCH_SIZE': 100,
         'ROUND': 5
     })
+
     # train start here.
     trainer.train()
 
     # train done, fetch bert model to prediction.
     prediction = Prediction(model, adapter, {
-        'CACHED_EMBS_NUM': 100000,
         'TOP_K': 1,
-        'CANDIDATE_BATCH_NUM': 1000,
-        'QUERY_BATCH_NUM': 1000,
-        'DEVICE': torch.device('cpu')
+        'EMB_BATCH_SIZE': 1000,
+        'DEVICE': torch.device('cuda:0')
     })
     # add candidates.
     prediction.add_candidate(*dataset.all_candidates())
 
     # we start predict query.
     print(prediction.predict(['Washton', 'apple']))
+
+    prediction.save('../trained/zel_zeshel_bert_35388.pkl')
 
 if __name__ == '__main__':
     main()

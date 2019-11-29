@@ -19,6 +19,9 @@ class Zeshel(Datasets):
           `root`: zel datasets dir location.
     '''
 
+    # using what worlds as datasets.
+    WORLDS = ['final_fantasy', 'muppets']
+
     # document DataFrame: document_id - title - text
     # train DataFrame and valid DataFrame: mention_id - label_document_id - text
     _doc: pandas.DataFrame = None
@@ -28,13 +31,16 @@ class Zeshel(Datasets):
     def __init__(self, root, conf=None):
         super().__init__(conf)
         kargs = {'orient': 'records', 'lines': True}
-        self._doc: pandas.DataFrame = pandas.read_json(f'{root}/documents/all.json', **kargs)
-        self._doc = self._doc.set_index('document_id', drop=False)
+        # generate documents
+        ds = [pandas.read_json(f'{root}/documents/{world}.json', **kargs) for world in self.WORLDS]
+        self._doc = pandas.concat(ds).set_index('document_id', drop=False)
+        # generate train and val
         self._train = pandas.read_json(f'{root}/mentions/train.json', **kargs)
         self._valid = pandas.read_json(f'{root}/mentions/val.json', **kargs)
+        self._train = self._train[self._train['corpus'].isin(self.WORLDS)]
+        self._valid = self._valid[self._valid['corpus'].isin(self.WORLDS)]
 
     def all_candidates(self) -> Tuple[List[str], List[Any]]:
-        # TODO: check whether here is order-reserved.
         id_list = self._doc['document_id'].tolist()
         val_list = self._doc['title'].tolist()
         return id_list, val_list
@@ -55,7 +61,7 @@ class Zeshel(Datasets):
               in fact. this function has very small probability to sample a positive example.
             `return`: a doc record.
         '''
-        doc_id = mention_record['label_document_id']
+        _ = mention_record
         # pandas.sample is too slow, i dont know why.
         sample_ix = random.sample(range(0, len(self._doc)), 1)[0]
         return self._doc.iloc[sample_ix]

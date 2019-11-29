@@ -4,10 +4,13 @@
 '''
 
 from typing import List, Any, Dict
+from tqdm import trange
 import numpy
 import torch
 import torch.nn.functional as F
 from base.config import Config
+from base.utils import dict_to_device
+from base.dataloader import DictDataLoader
 from .adapter import Adapter
 from .similar_net import SimilarNet
 
@@ -23,19 +26,16 @@ class Prediction(Config):
           `conf`: set parameters.
     '''
 
-    # maximum cached embs num.
-    CACHED_EMBS_NUM = 100000
-
     # return top K candidate
     TOP_K = 32
 
-    # num of candidate per batch checking(only work when embs are not full cached)
-    CANDIDATE_BATCH_NUM = 1000
-
     # num of query predict batch num
-    QUERY_BATCH_NUM = 100
+    # QUERY_BATCH_NUM = 100
 
-    # device, prefer another GPU
+    # batch size when generating
+    EMB_BATCH_SIZE = 1000
+
+    # device, where to save model and embs
     DEVICE = torch.device('cpu')
 
     # model and adaptar(adaptar for generating tensors, model for generating embs)
@@ -46,11 +46,12 @@ class Prediction(Config):
     # ids shape: [candidate_num], embs shape: [saved_candidate_num, hidden_size]
     candidate_ids: List[str] = None
     candidate_val: List[Any] = None
-    saved_candidate_embs: torch.Tensor = None
+    candidate_embs: torch.Tensor = None
 
     def __init__(self, similar_net: SimilarNet, adapter: Adapter, conf: Dict = None):
         Config.__init__(self, conf)
         self.similar_net = similar_net.to(self.DEVICE)
+        self.similar_net.eval()
         self.adapter = adapter
 
     def _generate_embs(self, inputs: List[Any], what: str):
@@ -58,11 +59,24 @@ class Prediction(Config):
             generate embeddings from inputs -> [input_num, hidden_size]
             what must be 'query' or 'candidate'
         '''
-        # using python reflection.
-        tensors_map = getattr(self.adapter, f'generate_{what}_tensors')(inputs).to(self.DEVICE)
-        embs = getattr(self.similar_net, f'{what}_model')(**tensors_map)
-        # pre normalize, or other operation for easy compute similarity.
-        return F.normalize(embs)
+
+        print(f'\n[PREDICTION]: generating {what} embs.')
+        # using python reflection to generating tensors.
+        tensors_map = getattr(self.adapter, f'generate_{what}_tensors')(inputs)
+        dataloader = DictDataLoader(tensors_map, {'batch_size': self.EMB_BATCH_SIZE})
+
+        # start generating embs.
+        embs_list = []
+        progress = trange(0, len(dataloader), desc='generating')
+        with torch.no_grad():
+            for batch, _ in zip(dataloader, progress):
+                # send to device, call model.
+                dict_to_device(batch, self.DEVICE)
+                embs = getattr(self.similar_net, f'{what}_model')(**batch)
+                embs_list.append(F.normalize(embs))
+
+        progress.close()
+        return torch.cat(embs_list)
 
     def add_candidate(self, candidate_ids: List[str], candidate_val: List[Any]):
         '''
@@ -72,38 +86,40 @@ class Prediction(Config):
         '''
         self.candidate_ids = candidate_ids
         self.candidate_val = candidate_val
-        saved_candidate = candidate_val[:self.CACHED_EMBS_NUM]
-        self.saved_candidate_embs = self._generate_embs(saved_candidate, 'candidate')
+        self.candidate_embs = self._generate_embs(self.candidate_val, 'candidate')
 
     def predict(self, queries: List[Any]) -> List[List[Any]]:
         '''
             predict candidates with which are most similar.
             `return`: for each query, return a list of TOP K candidates id
         '''
-        score = []
-        # unsaved candidates.
-        candidates = self.candidate_val[self.CACHED_EMBS_NUM:]
 
-        # queries: [query_num]
-        # query_embs shape: [query_batch_num, hidden_size]
-        for i in range(0, len(queries), self.QUERY_BATCH_NUM):
-            query_batch = queries[i:i + self.QUERY_BATCH_NUM]
-            query_embs = self._generate_embs(query_batch, 'query')
-            batch_score = [torch.matmul(query_embs, self.saved_candidate_embs.transpose())]
+        # query to embeddings.
+        query_embs = self._generate_embs(queries, 'query')
+        # query_embs shape: [query_num, hidden_size]
+        # candidate_embs shape: [candidate_num, hidden_size]
+        score = torch.matmul(query_embs, self.candidate_embs.transpose(0, 1))
 
-            # rank in unsaved candidates
-            # candidate_embs shape: [candidate_batch_num, hidden_size]
-            for j in range(self.CACHED_EMBS_NUM, len(self.candidate_val), self.CANDIDATE_BATCH_NUM):
-                candidate_batch = candidates[j:j + self.CANDIDATE_BATCH_NUM]
-                candidate_embs = self._generate_embs(candidate_batch, 'candidate')
-                batch_score.append(torch.matmul(query_embs, candidate_embs.transpose()))
-
-            # cat shape: [query_batch_num, candidate_num]
-            score.append(torch.cat(batch_score))
-
-        # score shape: [query_num, candidate_num]
-        # topk shape: [query_num, k] -> [query_num * k]
-        score = torch.cat(score)
+        # fetch top k, convert to original candidate value.
         _, topk_indices = torch.topk(score, self.TOP_K)
         to_str = numpy.frompyfunc(lambda i: self.candidate_val[i], 1, 1)
-        return to_str(topk_indices.numpy())
+        return to_str(topk_indices.cpu().numpy())
+
+    def save(self, fn: str):
+        '''
+            save prediction model for re-using.
+            `fn`: saved file name.
+        '''
+        import warnings
+        warnings.filterwarnings('ignore')
+        torch.save(self, fn)
+        warnings.resetwarnings()
+
+    @classmethod
+    def load(cls, fn: str, device: torch.device):
+        '''
+            load prediction model from filename
+        '''
+        obj = torch.load(fn, map_location=device)
+        obj.DEVICE = device
+        return obj

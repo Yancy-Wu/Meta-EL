@@ -18,13 +18,14 @@ class Adapter():
         self.candidate_tensorizer = candidate_tensorizer
 
     @staticmethod
-    def _generate_tensors(tensorizer, records: List[Any])-> Dict[str, torch.Tensor]:
+    def _generate_tensors(tensorizer, records: List[Any], desc: str)-> Dict[str, torch.Tensor]:
         '''
             convert origin data list to tensor dict.
             prefix will add to dict key names.
+            desc is tqdm description.
         '''
         tensor_map = dict()
-        records = tqdm(records)
+        records = tqdm(records, desc)
         # append all tensors
         for record in records:
             for name, tensor in tensorizer.encode(record).items():
@@ -41,21 +42,15 @@ class Adapter():
 
     def generate_candidate_tensors(self, candidates: List[Any]) -> Dict[str, torch.Tensor]:
         '''
-            [DESCRIPTION]
-              only convert candidates to tensors, will not modify dict name
-            [PARAMS]
-              `candidates`: type should be same as `Example.candidate`
+            using candidate tensorizer to convert candidates to tensors.
         '''
-        return self._generate_tensors(self.candidate_tensorizer, candidates)
+        return self._generate_tensors(self.candidate_tensorizer, candidates, 'candidate')
 
     def generate_query_tensors(self, queries: List[Any]) -> Dict[str, torch.Tensor]:
         '''
-            [DESCRIPTION]
-              only convert queries to tensors, will not modify dict name
-            [PARAMS]
-              `queries`: type should be same as `Example.query`
+            using query tensorizer to convert queries to tensors.
         '''
-        return self._generate_tensors(self.query_tensorizer, queries)
+        return self._generate_tensors(self.query_tensorizer, queries, 'query')
 
     def generate_example_tensors(self, examples: List[Example]) -> Dict[str, torch.Tensor]:
         '''
@@ -76,8 +71,8 @@ class Adapter():
         candidates = [example.candidate for example in examples]
         y = [example.y for example in examples]
         # generate tensors
-        query_tensor_map = self._generate_tensors(self.query_tensorizer, queries)
-        candidate_tensor_map = self._generate_tensors(self.candidate_tensorizer, candidates)
+        query_tensor_map = self.generate_query_tensors(queries)
+        candidate_tensor_map = self.generate_candidate_tensors(candidates)
         y_tensors = torch.LongTensor(y)
         # append all tensors to dict
         return {

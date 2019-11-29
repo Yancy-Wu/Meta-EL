@@ -51,18 +51,24 @@ class Trainer(Config):
         self.model.to(self.DEVICE)
 
         # generating train tensors
-        print('generating train loader:')
+        print('[TRAINER]: generating train loader')
         train_examples = self.dataset.train_examples()
-        print('converting train examples to tensors:')
+        print('[TRAINER]: converting train examples to tensors:')
         train_tensors_map = self.adapter.generate_example_tensors(train_examples)
-        self.train_loader = DictDataLoader(train_tensors_map, self.TRAIN_BATCH_SIZE)
+        self.train_loader = DictDataLoader(train_tensors_map, {
+            'batch_size': self.TRAIN_BATCH_SIZE,
+            'shuffle': True
+        })
 
         # generating validation tensors
-        print('generating val loader:')
+        print('\n[TRAINER]: generating val loader:')
         valid_examples = self.dataset.valid_examples()
-        print('converting val examples to tensors:')
+        print('[TRAINER]: converting val examples to tensors:')
         valid_tensors_map = self.adapter.generate_example_tensors(valid_examples)
-        self.valid_loader = DictDataLoader(valid_tensors_map, self.VALID_BATCH_SIZE)
+        self.valid_loader = DictDataLoader(valid_tensors_map, {
+            'batch_size': self.VALID_BATCH_SIZE,
+            'shuffle': True
+        })
 
     def _valid(self):
         # validation start here.
