@@ -1,17 +1,21 @@
 '''
-    cross-lingual json file format:
-    en-kb(ID ||| NAME ||| TYPE):
+    [SETTING]
+      train task on single specific lauguage, and eval still on that lauguage.
+      1-shot, EN_NAME as shot.
+      eval support set overlap with train slightly.
+    [FORMAT]
+      en-kb(ID ||| NAME ||| TYPE):
         53424859 ||| Henriette Aymer de Chevalerie ||| PER
-    en-am(ID ||| EN_NAME ||| AM_NAME ||| TYPE):
+      en-am(ID ||| EN_NAME ||| AM_NAME ||| TYPE):
         3378263 ||| John Michael Talbot ||| ጆን ማይክል ታልበት ||| PER
 '''
 import random
 from typing import List
 from tqdm import trange
 import pandas
-from . import MelDataset, Way, Task, Example
+from .. import MelDataset, Way, Task, Example
 
-class SingleXel(MelDataset):
+class SingleCrosselDataset(MelDataset):
     '''
         [NOTE]: we do not differentiate WAYS and CLASSES.
         xel single datasets implementation.
@@ -88,14 +92,14 @@ class SingleXel(MelDataset):
 
     # sample an task from train DataFrame
     def train_data(self) -> List[Task]:
-        progress = trange(0, len(self.TRAIN_TASKS_NUM))
+        progress = trange(0, self.TRAIN_TASKS_NUM)
         tasks = [self._sample_task(self._train) for _ in progress]
         progress.close()
         return tasks
 
     # sample an task from valid DataFrame
     def valid_data(self) -> List[Task]:
-        progress = trange(0, len(self.VALID_TASKS_NUM))
+        progress = trange(0, self.VALID_TASKS_NUM)
         tasks = [self._sample_task(self._valid) for _ in progress]
         progress.close()
         return tasks

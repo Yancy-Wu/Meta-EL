@@ -8,7 +8,7 @@ from typing import List, Tuple, Any
 import random
 from tqdm import trange
 import pandas
-from . import ZelDataset
+from . import ZelDataset, Example
 
 class Zeshel(ZelDataset):
     '''

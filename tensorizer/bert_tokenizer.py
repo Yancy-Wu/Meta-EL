@@ -16,8 +16,11 @@ class EasyBertTokenizer(Tensorizer):
     # pad or clip to maintain input length.
     FIXED_LEN = 32
 
+    # whether do lower case
+    DO_LOWER_CASE = True
+
     # bert tokenizer
-    bert_tokenizer = None
+    tokenizer = None
 
     @classmethod
     def from_pretrained(cls, model_dir, config=None):
@@ -26,10 +29,9 @@ class EasyBertTokenizer(Tensorizer):
             `model_dir`: model place.
             `config`: super-parameters config.
         '''
-        if not config:
-            config = dict()
-        config.update({'bert_tokenizer': BertTokenizer.from_pretrained(model_dir)})
-        return cls(config)
+        self = cls(config)
+        self.tokenizer = BertTokenizer.from_pretrained(model_dir, do_lower_case=self.DO_LOWER_CASE)
+        return self
 
     # pylint: disable=arguments-differ
     def encode(self, text: str) -> Dict[str, torch.Tensor]:
@@ -38,12 +40,12 @@ class EasyBertTokenizer(Tensorizer):
             input_ids: text tokenization ids.
             att_mask: mask [PAD] tokens
         '''
-        pad_token_id = self.bert_tokenizer.pad_token_id
-        ids = self.bert_tokenizer.encode(text)
+        pad_token_id = self.tokenizer.pad_token_id
+        ids = self.tokenizer.encode(text)
         # padding or clip to fixed length
         ids = (ids + [pad_token_id] * max(self.FIXED_LEN - len(ids), 0))[:self.FIXED_LEN]
         # add [CLS] and [SEP], then generate other tensor
-        ids = self.bert_tokenizer.add_special_tokens_single_sentence(ids)
+        ids = self.tokenizer.add_special_tokens_single_sentence(ids)
         att_mask = [0 if x == pad_token_id else 1 for x in ids]
         return {
             'input_ids': torch.LongTensor(ids),

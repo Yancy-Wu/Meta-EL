@@ -6,14 +6,14 @@ import torch
 from tensorizer.bert_tokenizer import EasyBertTokenizer
 from modules.bert import Bert
 from utils.trainer import Trainer
-from mel.datasets.context_zel import ContextZel
+from mel.datasets.zeshel.overall import OveralZeshelDataset
 from mel.models.prototypical_network import PrototypicalNetwork
 from mel.mel_adapter import MelAdapter
 
 def main():
     ''' entry point '''
     # create datasets. provide train and eval data.
-    dataset = ContextZel('./datasets/context_zel', {
+    dataset = OveralZeshelDataset('./datasets/context_zel', {
         'TRAIN_TASKS_NUM': 600,
         'VALID_TASKS_NUM': 25,
         'WAYS_NUM_PRE_TASK': 5,
@@ -23,7 +23,8 @@ def main():
 
     # tensorizer. convert an example to tensors.
     tensorizer = EasyBertTokenizer.from_pretrained('../pretrain/uncased_L-12_H-768_A-12', {
-        'FIXED_LEN': 128
+        'FIXED_LEN': 128,
+        'DO_LOWER_CASE': True
     })
 
     # adapter. call tensorizer, convert a batch of examples to big tensors.

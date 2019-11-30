@@ -14,8 +14,8 @@ class Example():
     # label
     y: Any = 'maybe entity ID'
 
-    def __init__(self, query, y):
-        self.query = query
+    def __init__(self, x, y):
+        self.x = x
         self.y = y
 
 class Way():

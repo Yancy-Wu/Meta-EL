@@ -71,14 +71,15 @@ class Trainer(Config):
         # validation start here.
         overall_num = 0
         overall_correct_num = 0
-        for batch in self.valid_loader:
-            deep_apply_dict(batch, lambda _, v: v.to(self.DEVICE))
-            y = batch.pop('y')
-            res = self.model.forward(**batch)
-            predict_y = torch.argmax(res, dim=-1)
-            is_right = torch.eq(y, predict_y).view(-1)
-            overall_num += torch.numel(is_right)
-            overall_correct_num += torch.sum(is_right, 0)
+        with torch.no_grad():
+            for batch in self.valid_loader:
+                deep_apply_dict(batch, lambda _, v: v.to(self.DEVICE))
+                y = batch.pop('y')
+                res = self.model.forward(**batch)
+                predict_y = torch.argmax(res, dim=-1)
+                is_right = torch.eq(y, predict_y).view(-1)
+                overall_num += torch.numel(is_right)
+                overall_correct_num += torch.sum(is_right, 0)
         print('ACC:', overall_correct_num / float(overall_num))
 
     def train(self):
@@ -95,9 +96,9 @@ class Trainer(Config):
                 res = res.view(-1, res.size(-1))
                 loss = F.cross_entropy(res, y)
                 print(f'[round: {round_num}]: {step}/{len(self.train_loader)} end. loss: {loss}')
-                optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
+                optimizer.zero_grad()
             # do valid per round
             print(f'**** now round {round_num} valid begin:')
             self._valid()

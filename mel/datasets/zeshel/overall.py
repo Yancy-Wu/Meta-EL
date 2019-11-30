@@ -1,17 +1,21 @@
 '''
-    context_zel csv file format: [~ as sep]
-    documents.json: ID ~ TEXT ~ TITLE
-    mentions.json: LCONTEXT ~ MENTION ~ RCONTEXT ~ ID
-    output mention and context string:
-    '{left_context}[SEP]{mention}[SEP]{right_context}'
+    [SETTTING]
+      using context.
+      two-shots. using text and description as shots.
+      eval support set overlap with train support set slightly.
+    [FORMAT]
+      documents.json: ID ~ TEXT ~ TITLE
+      mentions.json: LCONTEXT ~ MENTION ~ RCONTEXT ~ ID
+      output mention and context string:
+      '{left_context}[SEP]{mention}[SEP]{right_context}'
 '''
 import random
 from typing import List
 from tqdm import trange
 import pandas
-from . import MelDataset, Way, Task, Example
+from .. import MelDataset, Way, Task, Example
 
-class ContextZel(MelDataset):
+class OveralZeshelDataset(MelDataset):
     '''
         [DESCRIPTION]
           step 1: random sample mention examples from 'mentions.csv' as query set
@@ -39,7 +43,7 @@ class ContextZel(MelDataset):
     def __init__(self, root, conf=None):
         super().__init__(conf)
         # check parameters.
-        assert self.SHOTS_NUM_PRE_WAYS == 2, 'context XEL only support two shot!'
+        assert self.SHOTS_NUM_PRE_WAYS == 2, 'context EL only support two shot!'
         assert self.QUERY_NUM_PRE_WAY < 1, 'your asshole!'
         # read data.
         kargs = {'orient': 'records', 'lines': True}
@@ -83,14 +87,14 @@ class ContextZel(MelDataset):
 
     # sample an task from train DataFrame
     def train_data(self) -> List[Task]:
-        progress = trange(0, len(self.TRAIN_TASKS_NUM))
+        progress = trange(0, self.TRAIN_TASKS_NUM)
         tasks = [self._sample_task(self._train) for _ in progress]
         progress.close()
         return tasks
 
     # sample an task from valid DataFrame
     def valid_data(self) -> List[Task]:
-        progress = trange(0, len(self.VALID_TASKS_NUM))
+        progress = trange(0, self.VALID_TASKS_NUM)
         tasks = [self._sample_task(self._valid) for _ in progress]
         progress.close()
         return tasks

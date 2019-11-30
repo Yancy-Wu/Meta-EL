@@ -5,7 +5,7 @@
 from typing import Dict, List, Any
 from tqdm import tqdm
 import torch
-from tensorizer import Tensorizer
+from .tensorizer import Tensorizer
 
 class Adapter():
     '''
@@ -22,8 +22,8 @@ class Adapter():
         tensor_map = dict()
         records = tqdm(sources, desc)
         # append all tensors
-        for source in sources:
-            for name, tensor in tensorizer.encode(source).items():
+        for record in records:
+            for name, tensor in tensorizer.encode(record).items():
                 tensor = torch.unsqueeze(tensor, 0)
                 tensor_list = tensor_map.setdefault(name, [])
                 tensor_list.append(tensor)

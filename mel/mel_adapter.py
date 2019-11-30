@@ -34,8 +34,6 @@ class MelAdapter(Adapter):
         query_num = len(tasks[0].query)
         way_num = len(tasks[0].support)
         shot_num = len(tasks[0].support[0].shots)
-        support_tensor_shape = [task_num, way_num, shot_num, -1]
-        query_tensor_shape = [task_num, query_num, -1]
 
         # flatten task, prepare data.
         supports = []
@@ -45,9 +43,9 @@ class MelAdapter(Adapter):
         # data done.
         for task in tasks:
             label_str = [way.y for way in task.support]
-            supports.append(sum([way.shots for way in task.support], []))
-            queries.append([example.x for example in task.query])
-            y.append([label_str.index(example.y) for example in task.query])
+            supports += sum([way.shots for way in task.support], [])
+            queries += [example.x for example in task.query]
+            y += ([label_str.index(example.y) for example in task.query])
 
         # tensor generate.
         support_tensor_map = self._raw_list_to_tensors(self.support_tensorizer, supports, 'support')
@@ -55,8 +53,9 @@ class MelAdapter(Adapter):
         y_tensor = torch.LongTensor(y)
 
         # reshape tensors.
-        deep_apply_dict(support_tensor_map, lambda _, v: v.view(*support_tensor_shape))
-        deep_apply_dict(query_tensor_map, lambda _, v: v.view(*query_tensor_shape))
+        deep_apply_dict(support_tensor_map, lambda _, v: v.view(task_num, way_num, shot_num, -1))
+        deep_apply_dict(query_tensor_map, lambda _, v: v.view(task_num, query_num, -1))
+        y_tensor = y_tensor.view(task_num, -1)
 
         return {
             'support_tensor_map': support_tensor_map,

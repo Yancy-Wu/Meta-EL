@@ -7,16 +7,16 @@ import torch
 from tensorizer.bert_tokenizer import EasyBertTokenizer
 from modules.bert import Bert
 from utils.trainer import Trainer
-from mel.datasets.zeshel import Zeshel
+from mel.datasets.zeshel.normal import NormalZeshelDataset
 from mel.models.prototypical_network import PrototypicalNetwork
 from mel.mel_adapter import MelAdapter
 
 def main():
     ''' entry point '''
     # create datasets. provide train and eval data.
-    dataset = Zeshel('./datasets/zeshel/', {
+    dataset = NormalZeshelDataset('../datasets/zeshel/', {
         'TRAIN_TASKS_NUM': 1000,
-        'VALID_TASKS_NUM': 20,
+        'VALID_TASKS_NUM': 50,
         'WAYS_NUM_PRE_TASK': 5,
         'SHOTS_NUM_PRE_WAYS': 2,
         'QUERY_NUM_PRE_WAY': 1
@@ -24,7 +24,8 @@ def main():
 
     # tensorizer. convert an example to tensors.
     tensorizer = EasyBertTokenizer.from_pretrained('../pretrain/uncased_L-12_H-768_A-12', {
-        'FIXED_LEN': 64
+        'FIXED_LEN': 32,
+        'DO_LOWER_CASE': True
     })
 
     # adapter. call tensorizer, convert a batch of examples to big tensors.
@@ -45,9 +46,9 @@ def main():
         'adapter': adapter,
         'model': model,
         'DEVICE': torch.device('cuda:2'),
-        'TRAIN_BATCH_SIZE': 50,
-        'VALID_BATCH_SIZE': 50,
-        'ROUND': 5
+        'TRAIN_BATCH_SIZE': 20,
+        'VALID_BATCH_SIZE': 20,
+        'ROUND': 50
     })
 
     # train start here.

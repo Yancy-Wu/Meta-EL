@@ -1,20 +1,25 @@
 '''
-    zeshel  json file format:
-    {
-        entity_id:"",
-        items:[{ mention: "", category:"", context:""}, ...]
-    }
+    [SETTTING]
+      using context or no context.
+      multi-shots.
+      there is no cross between train support set and eval support set.
+    [FORMAT]
+      zeshel json file format:
+      {
+          id:"",
+          shots:[{ mention: "", left_context:"", right_context:""}, ...]
+      }
 '''
 import random
 import json
 import logging
 from typing import List
 from tqdm import trange
-from . import MelDataset, Way, Task, Example
+from .. import MelDataset, Way, Task, Example
 
 LOGGER = logging.getLogger(__name__)
 
-class Zeshel(MelDataset):
+class NormalZeshelDataset(MelDataset):
     '''
         [NOTE]: we do not differentiate WAYS and CLASSES.
         zeshel datasets implementation.
@@ -93,14 +98,14 @@ class Zeshel(MelDataset):
 
     # sample an task from train ways
     def train_data(self) -> List[Task]:
-        progress = trange(0, len(self.TRAIN_TASKS_NUM))
+        progress = trange(0, self.TRAIN_TASKS_NUM)
         tasks = [self._sample_task(self._train_ways) for _ in progress]
         progress.close()
         return tasks
 
     # sample an task from valid ways
     def valid_data(self) -> List[Task]:
-        progress = trange(0, len(self.VALID_TASKS_NUM))
+        progress = trange(0, self.VALID_TASKS_NUM)
         tasks = [self._sample_task(self._valid_ways) for _ in progress]
         progress.close()
         return tasks

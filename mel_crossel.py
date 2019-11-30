@@ -8,24 +8,25 @@ import torch
 from tensorizer.bert_tokenizer import EasyBertTokenizer
 from modules.bert import Bert
 from utils.trainer import Trainer
-from mel.datasets.single_xel import SingleXel
+from mel.datasets.crossel.single import SingleCrosselDataset
 from mel.models.prototypical_network import PrototypicalNetwork
 from mel.mel_adapter import MelAdapter
 
 def main():
     ''' entry point '''
     # create datasets. provide train and eval data.
-    dataset = SingleXel('./datasets/pivot-based-el-data/', 'bn', {
+    dataset = SingleCrosselDataset('../datasets/cross_el/', 'bn', {
         'TRAIN_TASKS_NUM': 1000,
-        'VALID_TASKS_NUM': 20,
-        'WAYS_NUM_PRE_TASK': 4,
+        'VALID_TASKS_NUM': 50,
+        'WAYS_NUM_PRE_TASK': 6,
         'SHOTS_NUM_PRE_WAYS': 1,
         'QUERY_NUM_PRE_WAY': 0.5
     })
 
     # tensorizer. convert an example to tensors.
     tensorizer = EasyBertTokenizer.from_pretrained('../pretrain/uncased_L-12_H-768_A-12', {
-        'FIXED_LEN': 32
+        'FIXED_LEN': 32,
+        'DO_LOWER_CASE': True
     })
 
     # adapter. call tensorizer, convert a batch of examples to big tensors.
@@ -34,7 +35,7 @@ def main():
     # embedding model. for predication.
     bert = Bert.from_pretrained('../pretrain/uncased_L-12_H-768_A-12', {
         'POOLING_METHOD': 'avg',
-        'FINETUNE_LAYER_RANGE': '10:12'
+        'FINETUNE_LAYER_RANGE': '1:12'
     })
 
     # prototypical network for training.
@@ -46,9 +47,9 @@ def main():
         'adapter': adapter,
         'model': model,
         'DEVICE': torch.device('cuda:2'),
-        'TRAIN_BATCH_SIZE': 50,
-        'VALID_BATCH_SIZE': 50,
-        'ROUND': 5
+        'TRAIN_BATCH_SIZE': 20,
+        'VALID_BATCH_SIZE': 20,
+        'ROUND': 20
     })
 
     # train start here.

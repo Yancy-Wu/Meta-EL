@@ -21,7 +21,8 @@ def main():
 
     # tensorizer. convert an example to tensors.
     tensorizer = EasyBertTokenizer.from_pretrained('../pretrain/uncased_L-12_H-768_A-12', {
-        'FIXED_LEN': 16
+        'FIXED_LEN': 16,
+        'DO_LOWER_CASE': True
     })
 
     # adapter. call tensorizer, convert a batch of examples to big tensors.
@@ -58,7 +59,7 @@ def main():
     prediction = Prediction(model, adapter, {
         'TOP_K': 1,
         'EMB_BATCH_SIZE': 1000,
-        'DEVICE': torch.device('cuda:0')
+        'DEVICE': torch.device('cuda:2')
     })
     # add candidates.
     prediction.add_candidate(*dataset.all_candidates())
