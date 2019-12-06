@@ -2,6 +2,7 @@
     convert datasets varied of source to meta-learning tasks
     all UPPERCASE variable are super parameters.
 '''
+import sys
 from typing import List, Any
 from base.dataset import Dataset
 
@@ -38,10 +39,10 @@ class Task():
     '''
         Task struct define in meta-learning, a task like this:
             # |-------------------------- N WAYS -------------------------|
-            # |-------- K SHOTs --------|   for training
+            # |-------- K SHOTs --------|   for support
             [([x00, x01, ..., x0k], y0), ..., ([xn0, xn1, ..., xnk], yn)]
-            # |------- M examples -------|   for testing
-            [(x0, y0), ..., (x?, y?)]
+            # |------- 1 example -------|   for query
+            [(x0, y0)]
         support taskset and query taskset combine to an task
     '''
 
@@ -49,7 +50,7 @@ class Task():
     support: List[Way] = None
 
     # Example(shots) for testing. type should be (class Shot(), y)
-    query: List[Example] = None
+    query: Example = None
 
     def __init__(self, support, query):
         self.support = support
@@ -60,21 +61,17 @@ class MelDataset(Dataset):
         dataset interface.
     '''
 
-    # meta-learning train tasks num
-    TRAIN_TASKS_NUM = 150
+    # meta-learning train tasks num, default as much as possible
+    TRAIN_TASKS_NUM = sys.maxsize
 
-    # meta-learning validation tasks num
-    VALID_TASKS_NUM = 10
+    # meta-learning validation tasks num, default as much as possible
+    VALID_TASKS_NUM = sys.maxsize
 
     # meta-learning task ways num
     WAYS_NUM_PRE_TASK = 20
 
     # meta-learning task shots num
     SHOTS_NUM_PRE_WAYS = 2
-
-    # meta-learning query examples num per way
-    # if less than 1, there will be some ways no query example.
-    QUERY_NUM_PRE_WAY: float = 1
 
     def train_data(self) -> List[Task]:
         '''

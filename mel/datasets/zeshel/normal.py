@@ -1,114 +1,93 @@
 '''
-    [SETTTING]
-      using context or no context.
-      multi-shots.
-      there is no cross between train support set and eval support set.
-    [FORMAT]
-      zeshel json file format:
-      {
-          id:"",
-          shots:[{ mention: "", left_context:"", right_context:""}, ...]
-      }
+    there is no cross between train support set and eval support set.
+    zeshel train/test_tasks.json file format:
+        {ID:"", SHOTS:[{ MENTION: "", LCONTEXT:"", RCONTEXT:""}, ...]}
+    zehsel test.json: LCONTEXT ~ MENTION ~ RCONTEXT ~ ID ~ CANDIDATE
 '''
 import random
-import json
-import logging
 from typing import List
+import pandas as pd
 from tqdm import trange
-from .. import MelDataset, Way, Task, Example
+from . import ZeshelDataset
+from .. import Way, Task
 
-LOGGER = logging.getLogger(__name__)
-
-class NormalZeshelDataset(MelDataset):
+class NormalZeshelDataset(ZeshelDataset):
     '''
-        [NOTE]: we do not differentiate WAYS and CLASSES.
         zeshel datasets implementation.
-        `root`: zeshel datasets file location which contain train.json, test.json.
+        `root`: zeshel datasets file location.
     '''
 
-    # portion of ways for generating training tasks
-    TRAIN_WAYS_PORTION = 0.9
+    # train way portion
+    TRAIN_WAY_PORTION = 0.9
 
-    # train ways, valid ways and test tasks
-    _train_ways: List[Way] = None
-    _valid_ways: List[Way] = None
-    _test_tasks: List[Task] = None
+    # whether support shots using context or not.
+    SUPPORT_USING_CONTEXT = True
+
+    # document DataFrame: ID - TEXT - TITLE
+    _test_tasks: pd.DataFrame = None
+    _train_tasks: pd.DataFrame = None
+    _valid_tasks: pd.DataFrame = None
+    _test: pd.DataFrame = None
 
     def __init__(self, root, conf=None):
         super().__init__(conf)
 
-        # not support fraction query num.
-        self.QUERY_NUM_PRE_WAY = int(self.QUERY_NUM_PRE_WAY)
-        if self.QUERY_NUM_PRE_WAY < 1:
-            raise AssertionError('not support fraction query num per way')
+        # set function.
+        self._support_x = self._x_context if self.SUPPORT_USING_CONTEXT else self._x_normal
 
-        all_ways = self._generate_ways_from_file(f'{root}/train.json')
-        train_ways_num = int(len(all_ways) * self.TRAIN_WAYS_PORTION)
-        self._train_ways = all_ways[:train_ways_num]
-        self._valid_ways = all_ways[train_ways_num:]
+        # filter
+        kargs = {'orient': 'values', 'lines': True}
+        func = lambda way: len(way['SHOTS']) > self.SHOTS_NUM_PRE_WAYS
+        tasks = pd.read_json(f'{root}/train_tasks.json', **kargs)
+        tasks = tasks.loc[tasks.apply(func, axis=1)]
+        train_way_num = int(self.TRAIN_WAY_PORTION * len(tasks))
+        self._train_tasks = tasks.iloc[:train_way_num]
+        self._valid_tasks = tasks.iloc[train_way_num:]
+        self._test_tasks = pd.read_json(f'{root}/test_tasks.json', **kargs)
+        self._test_tasks = self._test_tasks.set_index('ID', drop=False)
+        self._test = pd.read_json(f'{root}/test_{self.WAYS_NUM_PRE_TASK}_ways.json', **kargs)
 
-        # if no enough ways, raise error.
-        if len(self._train_ways) < self.WAYS_NUM_PRE_TASK:
+        # check parameters.
+        if len(self._train_tasks) < self.WAYS_NUM_PRE_TASK:
             raise AssertionError('no enough ways to generate an task')
 
-        # if available shots are too few, log a warning
-        train_shots_num = sum([len(way.shots) for way in self._train_ways])
-        if train_shots_num < self.WAYS_NUM_PRE_TASK * self.TRAIN_TASKS_NUM:
-            LOGGER.warning(f'{train_shots_num} examples maybe too few for generating tasks')
+    # pylint: disable=arguments-differ
+    def _generate_way(self, way: pd.Series) -> Way:
+        # random sample shots.
+        shots = random.sample(way['SHOTS'], self.SHOTS_NUM_PRE_WAYS)
+        return Way([self._support_x(shot) for shot in shots], way['ID'])
 
-    def _generate_ways_from_file(self, fn: str) -> List[Way]:
-        '''
-            load all ways and shots from file.
-            `return`: list of all ways(shots in it).
-        '''
-        avail_ways: List[Way] = []
-
-        for line in open(fn):
-            _way = json.loads(line)
-            _y = _way['entity_id']
-            _shots = _way['items']
-
-            # filter all ways whose shots count less than SHOTS_NUM
-            if len(_shots) < self.SHOTS_NUM_PRE_WAYS + self.QUERY_NUM_PRE_WAY:
-                continue
-
-            # generate new way
-            avail_ways.append(Way([_shot['mention'] for _shot in _shots], _y))
-
-        return avail_ways
-
-    def _sample_task(self, ways: List[Way]) -> Task:
-        '''
-            generate an meta-learning task from a list of ways
-            `return`: a Task object.
-        '''
-        task = Task([], [])
-
-        # generate ways and tests. [pylint say error, i dont know why]
-        # pylint: disable=unsubscriptable-object
-        way: Way = None
-        for way in random.sample(ways, self.WAYS_NUM_PRE_TASK):
-            shots = random.sample(way.shots, self.SHOTS_NUM_PRE_WAYS + self.QUERY_NUM_PRE_WAY)
-            train_shots = shots[:self.SHOTS_NUM_PRE_WAYS]
-            test_shots = shots[self.SHOTS_NUM_PRE_WAYS:]
-            task.support.append(Way(train_shots, way.y))
-            task.query += [Example(shot, way.y) for shot in test_shots]
-        # got it
+    def _sample_task(self, df: pd.DataFrame) -> Task:
+        df = df.sample(self.WAYS_NUM_PRE_TASK)
+        way = df.sample().iloc[0]
+        # remove such shot, and remains are used to generate support.
+        shots_backup = way['SHOTS']
+        random.shuffle(shots_backup)
+        way['SHOTS'] = shots_backup[:-1]
+        query: dict = shots_backup[-1]
+        query.update({'ID': way['ID']})
+        # generate query and support and task.
+        task = self._generate_task(query, df)
+        way['SHOTS'] = shots_backup
         return task
 
     # sample an task from train ways
     def train_data(self) -> List[Task]:
-        progress = trange(0, self.TRAIN_TASKS_NUM)
-        tasks = [self._sample_task(self._train_ways) for _ in progress]
-        progress.close()
-        return tasks
+        # sample train task.
+        with trange(0, self.TRAIN_TASKS_NUM) as progress:
+            return [self._sample_task(self._train_tasks) for _ in progress]
 
-    # sample an task from valid ways
     def valid_data(self) -> List[Task]:
-        progress = trange(0, self.VALID_TASKS_NUM)
-        tasks = [self._sample_task(self._valid_ways) for _ in progress]
-        progress.close()
-        return tasks
+        # sample valid task.
+        with trange(0, self.VALID_TASKS_NUM) as progress:
+            return [self._sample_task(self._valid_tasks) for _ in progress]
 
     def test_data(self) -> List[Task]:
-        return self._test_tasks
+        tasks = []
+        # generate task per line
+        with trange(0, len(self._test)) as progress:
+            for (_, query), _ in zip(self._test.iterrows(), progress):
+                support = self._test_tasks.loc[query['CANDIDATE']]
+                tasks.append(self._generate_task(query, support))
+        # pad pad pad pad...
+        return tasks

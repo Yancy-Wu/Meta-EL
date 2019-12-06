@@ -30,8 +30,8 @@ class PrototypicalNetwork(nn.Module):
               for each query item, return its p2 distance in terms of support proto.
             [PARAMS]
               `support_tensor_map item shape`: (tasks_num, ways_num, shots_num, support_seq_length)
-              `query_tensor_map item shape`: (tasks_num, query_num, query_seq_length)
-              `return shape`: (tasks_num, query_num, ways_num), no softmax.
+              `query_tensor_map item shape`: (tasks_num, query_seq_length)
+              `return shape`: (tasks_num, ways_num), no softmax.
         '''
         # generate all embeddings
         support_embs = self.support_model.forward(**support_tensor_map)

@@ -26,9 +26,6 @@ class Prediction(Config):
           `conf`: set parameters.
     '''
 
-    # return top K candidate
-    TOP_K = 32
-
     # batch size when generating
     EMB_BATCH_SIZE = 1000
 
@@ -85,7 +82,7 @@ class Prediction(Config):
         self.candidate_val = candidate_val
         self.candidate_embs = self._generate_embs(self.candidate_val, 'candidate')
 
-    def predict(self, queries: List[Any]) -> List[List[Any]]:
+    def predict(self, queries: List[Any], topk: int = 1) -> List[List[Any]]:
         '''
             predict candidates with which are most similar.
             `return`: for each query, return a list of TOP K candidates id
@@ -98,7 +95,7 @@ class Prediction(Config):
         score = torch.matmul(query_embs, self.candidate_embs.transpose(0, 1))
 
         # fetch top k, convert to original candidate value.
-        _, topk_indices = torch.topk(score, self.TOP_K)
+        _, topk_indices = torch.topk(score, topk)
         to_str = numpy.frompyfunc(lambda i: self.candidate_val[i], 1, 1)
         return to_str(topk_indices.cpu().numpy())
 

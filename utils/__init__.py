@@ -2,6 +2,7 @@
     utils which cannot be grouped to certain module.
 '''
 
+import functools
 from typing import List, Tuple, Any
 
 def dict_to_kvlist(d: dict, sep='|') -> Tuple[List[str], List[Any]]:
@@ -59,3 +60,15 @@ def deep_apply_dict(d: dict(), func: type(lambda k, v: None)):
             deep_apply_dict(val, func)
         else:
             d[key] = func(key, val)
+
+def log(cls, text):
+    '''
+        auto log class name and text.
+    '''
+    def _decorator(func):
+        @functools.wraps(func)
+        def _wrapper(*args, **kw):
+            print(f'[{cls.__name__}]: {text}')
+            return func(*args, **kw)
+        return _wrapper
+    return _decorator

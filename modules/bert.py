@@ -37,6 +37,12 @@ class Bert(nn.Module, Config):
         config.update({'bert': bert, 'config': bert.config})
         return cls(config)
 
+    def save_pretrained(self, saved_dir):
+        '''
+            save bert model to specific dir.
+        '''
+        self.bert.save_pretrained(saved_dir)
+
     # pylint: disable=arguments-differ
     def forward(self, input_ids: torch.LongTensor, att_mask: torch.LongTensor):
         '''

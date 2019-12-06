@@ -33,13 +33,12 @@ class Protonet(nn.Module, Config):
         '''
             ** stand for any dim size
             `embs` shape: (**, ways_num, shots_num, example_emb_size)
-            `query_embs` shape: (**, query_num, example_emb_size)
-            `return shape`: (**, query_num, ways_num), only E distance, no softmax
+            `query_embs` shape: (**, example_emb_size)
+            `return shape`: (**, ways_num), only E distance, no softmax
         '''
         # fetch ways prototype embeddings.
+        # shape: (**, ways_num, example_emb_size)
         proto_embs: torch.FloatTensor = self.proto(embs)
-        # shape: (**, ways_num, example_emb_size) -> (**, 1, ways_num, example_emb_size)
-        proto_embs = proto_embs.unsqueeze(-3)
-        # shape: (**, query_num, example_emb_size) -> (**, query_num, 1, example_emb_size)
+        # shape: (**, example_emb_size) -> (**, 1, example_emb_size)
         query_embs = query_embs.unsqueeze(-2)
         return -((proto_embs - query_embs) ** 2).sum(-1)

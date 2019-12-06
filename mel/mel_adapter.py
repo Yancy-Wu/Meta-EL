@@ -31,7 +31,6 @@ class MelAdapter(Adapter):
         '''
         # task info, and tensor shape
         task_num = len(tasks)
-        query_num = len(tasks[0].query)
         way_num = len(tasks[0].support)
         shot_num = len(tasks[0].support[0].shots)
 
@@ -44,8 +43,8 @@ class MelAdapter(Adapter):
         for task in tasks:
             label_str = [way.y for way in task.support]
             supports += sum([way.shots for way in task.support], [])
-            queries += [example.x for example in task.query]
-            y += ([label_str.index(example.y) for example in task.query])
+            queries.append(task.query.x)
+            y.append(label_str.index(task.query.y))
 
         # tensor generate.
         support_tensor_map = self._raw_list_to_tensors(self.support_tensorizer, supports, 'support')
@@ -54,8 +53,7 @@ class MelAdapter(Adapter):
 
         # reshape tensors.
         deep_apply_dict(support_tensor_map, lambda _, v: v.view(task_num, way_num, shot_num, -1))
-        deep_apply_dict(query_tensor_map, lambda _, v: v.view(task_num, query_num, -1))
-        y_tensor = y_tensor.view(task_num, -1)
+        deep_apply_dict(query_tensor_map, lambda _, v: v.view(task_num, -1))
 
         return {
             'support_tensor_map': support_tensor_map,
