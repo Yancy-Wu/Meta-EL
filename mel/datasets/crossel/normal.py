@@ -1,30 +1,25 @@
 '''
-    there is no cross between train support set and eval support set.
-    zeshel train/test_tasks.json file format:
-        {ID:"", SHOTS:[{ MENTION: "", LCONTEXT:"", RCONTEXT:""}, ...]}
-    zehsel test.json: LCONTEXT ~ MENTION ~ RCONTEXT ~ ID ~ CANDIDATE
+    support.json: ID - SHOTS{LAN - MENTION}
+    test_{lan}.json: ID - LAN - MENTION - CANDIDATE_50_WAYS - ... - CANDIDATE_2_WAYS
 '''
 import random
 from typing import List
-import pandas as pd
 from tqdm import trange
-from . import ZeshelDataset
+import pandas as pd
 from .. import Way, Task
+from . import CrosselDataset
 
-class NormalZeshelDataset(ZeshelDataset):
+class NormalCrosselDataset(CrosselDataset):
     '''
-        zeshel datasets implementation.
-        `root`: zeshel datasets file location.
+        `root`: xel datasets dir location. should exist [en-kb] file
+        `lauguage`: training language.
     '''
 
     # train way portion
     TRAIN_WAY_PORTION = 0.9
 
-    # whether support shots using context or not.
-    SUPPORT_USING_CONTEXT = True
-
-    # document DataFrame: ID - TEXT - TITLE
-    _test_tasks: pd.DataFrame = None
+    # ID - SHOTS{LAN - TITLE}
+    _support: pd.DataFrame = None
     _train_tasks: pd.DataFrame = None
     _valid_tasks: pd.DataFrame = None
     _test: pd.DataFrame = None
@@ -32,30 +27,23 @@ class NormalZeshelDataset(ZeshelDataset):
     def __init__(self, root, conf=None):
         super().__init__(conf)
 
-        # set function.
-        self._support_x = self._x_context if self.SUPPORT_USING_CONTEXT else self._x_normal
-
-        # filter
-        kargs = {'orient': 'values', 'lines': True}
-        func = lambda way: len(way['SHOTS']) > self.SHOTS_NUM_PRE_WAYS
-        tasks = pd.read_json(f'{root}/train_tasks.json', **kargs)
-        tasks = tasks.loc[tasks.apply(func, axis=1)]
-        train_way_num = int(self.TRAIN_WAY_PORTION * len(tasks))
-        self._train_tasks = tasks.iloc[:train_way_num]
-        self._valid_tasks = tasks.iloc[train_way_num:]
-        self._test_tasks = pd.read_json(f'{root}/test_tasks.json', **kargs)
-        self._test_tasks = self._test_tasks.set_index('ID', drop=False)
-        self._test = pd.read_json(f'{root}/test_{self.WAYS_NUM_PRE_TASK}_ways.json', **kargs)
-
         # check parameters.
-        if len(self._train_tasks) < self.WAYS_NUM_PRE_TASK:
-            raise AssertionError('no enough ways to generate an task')
+        assert self.SHOTS_NUM_PRE_WAYS < 10, 'No so much shots!'
+
+        # read data.
+        kargs = {'orient': 'values', 'lines': True}
+        support = pd.read_json(f'{root}/support.json', **kargs).set_index('ID', drop=False)
+        train_way_num = int(self.TRAIN_WAY_PORTION * len(support))
+        self._support = support
+        self._train_tasks = support[:train_way_num]
+        self._valid_tasks = support[train_way_num:]
+        self._test = pd.read_json(f'{root}/test_{self.TEST_LANGUAGE}.json', **kargs)
 
     # pylint: disable=arguments-differ
     def _generate_way(self, way: pd.Series) -> Way:
         # random sample shots.
         shots = random.sample(way['SHOTS'], self.SHOTS_NUM_PRE_WAYS)
-        return Way([self._support_x(shot) for shot in shots], way['ID'])
+        return Way([self._x(shot) for shot in shots], way['ID'])
 
     def _sample_task(self, df: pd.DataFrame) -> Task:
         df = df.sample(self.WAYS_NUM_PRE_TASK)
@@ -86,7 +74,8 @@ class NormalZeshelDataset(ZeshelDataset):
         # generate task per line
         with trange(0, len(self._test)) as progress:
             for (_, query), _ in zip(self._test.iterrows(), progress):
-                support = self._test_tasks.loc[query['CANDIDATE']]
+                key = f'CANDIDATE_{self.WAYS_NUM_PRE_TASK}_WAYS'
+                support = self._support.loc[query[key]]
                 tasks.append(self._generate_task(query, support))
         # pad pad pad pad...
         return tasks

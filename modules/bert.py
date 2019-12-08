@@ -18,6 +18,9 @@ class Bert(nn.Module, Config):
     # fine-tune layers
     FINETUNE_LAYER_RANGE = '1:12'
 
+    # freeze embeddings
+    FREEZE_EMBEDDINGS = False
+
     # bert config
     config: BertConfig = None
 
