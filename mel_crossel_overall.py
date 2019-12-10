@@ -75,10 +75,9 @@ def main(config: dict):
     bert.save_pretrained(config['saved_dir'])
 
 if __name__ == '__main__':
-    conf = {
+    main({
         'way_num': [50, 20, 10, 5, 2],
         'device': 'cuda:3',
         'saved_dir': f'./saved/crossel_overall/shot_2',
         'lan': ['bn', 'jv', 'mr', 'pa', 'te', 'uk']
-    }
-    main(conf)
+    })

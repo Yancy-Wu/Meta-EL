@@ -6,7 +6,7 @@ from typing import Dict, List, Any
 import torch
 from base.adapter import Adapter
 from base.tensorizer import Tensorizer
-from .datasets import Example
+from .datasets import TrainExample
 
 class ZelAdapter(Adapter):
     '''
@@ -30,12 +30,12 @@ class ZelAdapter(Adapter):
         return self._raw_list_to_tensors(self.query_tensorizer, queries, 'query')
 
     # pylint: disable=arguments-differ
-    def generate_tensors(self, examples: List[Example]) -> Dict[str, torch.Tensor]:
+    def generate_tensors(self, examples: List[TrainExample]) -> Dict[str, torch.Tensor]:
         '''
             [DESCRIPTION]
               convert all examples to tensors
             [PARAMS]
-              `examples`: example list.
+              `examples`: TrainExample list.
               `return`: a dict of tensors whose shape is [example_num, **]
               ** are tensorizer tensor size.
         '''

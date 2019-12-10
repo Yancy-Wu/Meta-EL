@@ -115,3 +115,9 @@ class Trainer(Config):
         })
         print('now we begin to test:')
         self._eval(loader)
+
+    def test_myself(self):
+        '''
+            test data from self.dataset.
+        '''
+        self.test(self.dataset.test_data())

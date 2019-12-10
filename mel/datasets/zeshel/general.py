@@ -8,8 +8,7 @@ import warnings
 from typing import List
 from tqdm import trange
 import pandas
-from zel.prediction import Prediction
-from utils import log
+from zel.tester import Tester
 from . import ZeshelDataset
 from .. import Way, Task
 
@@ -31,12 +30,11 @@ class GeneralZeshelDataset(ZeshelDataset):
     _test: pandas.DataFrame = None
 
     # zel prediction model
-    prediction: Prediction = None
+    tester: Tester = None
 
-    @log(GeneralZeshelDataset, 'reading source data.')
-    def __init__(self, root: str, prediction: Prediction, conf=None):
+    def __init__(self, root: str, tester: Tester, conf=None):
         super().__init__(root, conf)
-        self.prediction = prediction
+        self.tester = tester
 
         # check parameters.
         if self.SHOTS_NUM_PRE_WAYS or self.QUERY_NUM_PRE_WAY:
@@ -58,7 +56,7 @@ class GeneralZeshelDataset(ZeshelDataset):
         # given a mention record, create an task. set retain to True when eval and test.
         tasks = []
         progress = trange(0, len(pd))
-        predicted_doc_ids = self.prediction.predict(pd['MENTION'].tolist(), self.WAYS_NUM_PRE_TASK)
+        predicted_doc_ids = self.tester.predict(pd['MENTION'].tolist(), self.WAYS_NUM_PRE_TASK)
 
         # if retain origin candidates, maybe there exists non-correct shot in support set.
         for i in progress:
@@ -76,14 +74,11 @@ class GeneralZeshelDataset(ZeshelDataset):
         progress.close()
         return tasks
 
-    @log(GeneralZeshelDataset, 'creating train tasks.')
     def train_data(self) -> List[Task]:
         return self._create_task(self._train[:self.TRAIN_TASKS_NUM], False)
 
-    @log(GeneralZeshelDataset, 'creating valid tasks.')
     def valid_data(self) -> List[Task]:
         return self._create_task(self._valid[:self.VALID_TASKS_NUM], True)
 
-    @log(GeneralZeshelDataset, 'creating test tasks.')
     def test_data(self) -> List[Task]:
         return self._create_task(self._test, True)

@@ -75,10 +75,9 @@ def main(config: dict):
 
 if __name__ == '__main__':
     for using_context in [1, 0]:
-        conf = {
+        main({
             'way_num': [50, 20, 10, 5, 2],
             'context': bool(using_context),
             'device': 'cuda:1',
             'saved_dir': f'./saved/zeshel_overall/context_{using_context}'
-        }
-        main(conf)
+        })

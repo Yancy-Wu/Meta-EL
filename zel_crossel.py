@@ -1,5 +1,5 @@
 '''
-    test zel on zeshel datasets.
+    test xel on crossel datasets.
 '''
 
 import os
@@ -8,7 +8,7 @@ from utils.trainer import Trainer
 from zel.models.similar_net import SimilarNet
 from zel.tester import Tester
 from zel.zel_adapter import ZelAdapter
-from zel.datasets.zeshel import Zeshel
+from zel.datasets.crossel import Crossel
 from tensorizer.bert_tokenizer import EasyBertTokenizer
 from modules.bert import Bert
 
@@ -22,13 +22,14 @@ def main(config: dict):
         os.makedirs(config['saved_dir'])
 
     # create datasets. provide train and eval data.
-    dataset = Zeshel('../datasets/zeshel', {
+    dataset = Crossel('../datasets/crossel', {
         'TRAIN_WAY_PORTION': 0.9,
+        'TEST_LANGUAGE': 'uk', # it doesn't matter
         'MATCH_KEY': config['match_key']
     })
 
     # tensorizer. convert an example to tensors.
-    tensorizer = EasyBertTokenizer.from_pretrained('../pretrain/uncased_L-12_H-768_A-12', {
+    tensorizer = EasyBertTokenizer.from_pretrained('../pretrain/multi_cased_L-12_H-768_A-12', {
         'FIXED_LEN': config['fixed_len'],
         'DO_LOWER_CASE': True
     })
@@ -37,7 +38,7 @@ def main(config: dict):
     adapter = ZelAdapter(tensorizer, tensorizer)
 
     # embedding model. for predication.
-    bert = Bert.from_pretrained('../pretrain/uncased_L-12_H-768_A-12', {
+    bert = Bert.from_pretrained('../pretrain/multi_cased_L-12_H-768_A-12', {
         'POOLING_METHOD': 'avg',
         'FINETUNE_LAYER_RANGE': '9:12'
     })
@@ -57,7 +58,7 @@ def main(config: dict):
         'DEVICE': torch.device(config['device']),
         'TRAIN_BATCH_SIZE': 1000,
         'VALID_BATCH_SIZE': 1000,
-        'ROUND': 10
+        'ROUND': 2
     })
 
     # train start here.
@@ -74,9 +75,11 @@ def main(config: dict):
     tester.save(config['saved_dir'])
 
     # we start test here.
-    for i in config['top_what']:
-        print(f'we test zeshel here: top-{i}')
-        tester.test(dataset.test_data(), i)
+    for lan in config['lan']:
+        test_dataset = Crossel('../datasets/crossel', {'TEST_LANGUAGE': lan})
+        for i in config['top_what']:
+            print(f'we test crossel here: lan-{lan}, top-{i}')
+            tester.test(test_dataset.test_data(), i)
 
 if __name__ == '__main__':
     for match_key, fixed_len in zip(['TITLE', 'TEXT'], [16, 32]):
@@ -85,5 +88,6 @@ if __name__ == '__main__':
                 'match_key': match_key,
                 'fixed_len': fixed_len,
                 'device': 'cpu',
-                'saved_dir': f'./saved/zeshel/zel_{match_key}.pkl'
+                'saved_dir': f'./saved/crossel/zel_{match_key}.pkl',
+                'lan': ['bn', 'jv', 'mr', 'pa', 'te', 'uk']
             })

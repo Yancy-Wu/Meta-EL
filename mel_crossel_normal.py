@@ -78,11 +78,10 @@ def main(config: dict):
 
 if __name__ == '__main__':
     for shot_num in [8, 5, 2, 1]:
-        conf = {
+        main({
             'shot_num': shot_num,
             'way_num': [50, 20, 10, 5, 2],
             'device': 'cuda:2',
             'saved_dir': f'./saved/crossel_normal/shot_{shot_num}',
             'lan': ['bn', 'jv', 'mr', 'pa', 'te', 'uk']
-        }
-        main(conf)
+        })
