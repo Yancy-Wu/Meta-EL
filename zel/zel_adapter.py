@@ -44,8 +44,8 @@ class ZelAdapter(Adapter):
         candidates = [example.candidate for example in examples]
         y = [example.y for example in examples]
         # generate tensors
-        query_tensor_map = self.generate_query_tensors(queries)
         candidate_tensor_map = self.generate_candidate_tensors(candidates)
+        query_tensor_map = self.generate_query_tensors(queries)
         y_tensor = torch.LongTensor(y)
         # append all tensors to dict
         return {

@@ -4,7 +4,7 @@
 
 from typing import Dict, Any
 import torch
-from base.config import Config
+from .config import Config
 
 class Tensorizer(Config):
     '''

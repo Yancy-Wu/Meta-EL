@@ -6,7 +6,7 @@ import os
 import torch
 from utils.trainer import Trainer
 from zel.models.similar_net import SimilarNet
-from zel.tester import Tester
+from zel.zel_predictor import ZelPredictor
 from zel.zel_adapter import ZelAdapter
 from zel.datasets.zeshel import Zeshel
 from tensorizer.bert_tokenizer import EasyBertTokenizer
@@ -18,8 +18,9 @@ def main(config: dict):
     '''
     # print tag.
     print(10 * '*', __file__, config)
-    if not os.path.exists(config['saved_dir']):
-        os.makedirs(config['saved_dir'])
+    saved_dir = os.path.dirname(config['saved_file'])
+    if not os.path.exists(saved_dir):
+        os.makedirs(saved_dir)
 
     # create datasets. provide train and eval data.
     dataset = Zeshel('../datasets/zeshel', {
@@ -55,35 +56,35 @@ def main(config: dict):
         'adapter': adapter,
         'model': model,
         'DEVICE': torch.device(config['device']),
-        'TRAIN_BATCH_SIZE': 1000,
+        'TRAIN_BATCH_SIZE': 300,
         'VALID_BATCH_SIZE': 1000,
-        'ROUND': 10
+        'ROUND': 5
     })
-
     # train start here.
     trainer.train()
 
     # train done, fetch bert model to prediction.
-    tester = Tester(model, adapter, {
-        'TEST_BATCH_SIZE': 100,
+    tester = ZelPredictor(model, adapter, {
+        'TEST_BATCH_SIZE': 200,
         'EMB_BATCH_SIZE': 1000,
         'DEVICE': torch.device(config['device'])
     })
     # add candidates.
     tester.set_candidates(dataset.all_candidates())
-    tester.save(config['saved_dir'])
+    tester.save(config['saved_file'])
 
     # we start test here.
+    test_data = dataset.test_data()
     for i in config['top_what']:
         print(f'we test zeshel here: top-{i}')
-        tester.test(dataset.test_data(), i)
+        tester.test(test_data, i)
 
 if __name__ == '__main__':
-    for match_key, fixed_len in zip(['TITLE', 'TEXT'], [16, 32]):
-        for top in [64, 32, 16, 8, 4, 2, 1]:
-            main({
-                'match_key': match_key,
-                'fixed_len': fixed_len,
-                'device': 'cpu',
-                'saved_dir': f'./saved/zeshel/zel_{match_key}.pkl'
-            })
+    for match_key, fixed_len in zip(['TEXT', 'TITLE'], [32, 16]):
+        main({
+            'match_key': match_key,
+            'fixed_len': fixed_len,
+            'device': 'cuda:2',
+            'top_what': [64, 32, 16, 8, 4, 2, 1],
+            'saved_file': f'./saved/zeshel_zel/{match_key}.bin'
+        })

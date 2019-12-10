@@ -40,6 +40,7 @@ class EasyBertTokenizer(Tensorizer):
             input_ids: text tokenization ids.
             att_mask: mask [PAD] tokens
         '''
+        text = ' '.join(text.split()[:2 * self.FIXED_LEN])
         pad_token_id = self.tokenizer.pad_token_id
         ids = self.tokenizer.encode(text)
         # padding or clip to fixed length
