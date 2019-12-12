@@ -25,7 +25,7 @@ def main(config: dict):
     # create datasets. provide train and eval data.
     dataset = Crossel('../datasets/crossel', {
         'TRAIN_WAY_PORTION': 0.9,
-        'MATCH_KEY': config['match_key'],
+        'CANDIDATE_USING_TEXT': config['context'],
         'TEST_LANGUAGE': 'uk' # it doesn't matter.
     })
 
@@ -57,8 +57,8 @@ def main(config: dict):
         'adapter': adapter,
         'model': model,
         'DEVICE': torch.device(config['device']),
-        'TRAIN_BATCH_SIZE': 300,
-        'VALID_BATCH_SIZE': 1000,
+        'TRAIN_BATCH_SIZE': 100,
+        'VALID_BATCH_SIZE': 500,
         'ROUND': 2
     })
 
@@ -85,12 +85,12 @@ def main(config: dict):
             tester.test(test_data, i)
 
 if __name__ == '__main__':
-    for match_key, fixed_len in zip(['TEXT', 'TITLE'], [32, 16]):
+    for context, fixed_len in zip([1, 0], [48, 16]):
         main({
-            'match_key': match_key,
+            'context': bool(context),
             'fixed_len': fixed_len,
             'device': 'cuda:0',
             'lan': ['bn', 'jv', 'mr', 'pa', 'te', 'uk'],
-            'top_what': [64, 32, 16, 8, 4, 2, 1],
-            'saved_file': f'./saved/crossel_zel/{match_key}.bin'
+            'top_what': [100, 50, 20, 10, 5, 2, 1],
+            'saved_file': f'./saved/crossel_zel/context_{context}.bin'
         })

@@ -4,6 +4,7 @@
 
 import os
 import torch
+import sys
 from utils.trainer import Trainer
 from zel.models.similar_net import SimilarNet
 from zel.zel_predictor import ZelPredictor
@@ -25,7 +26,8 @@ def main(config: dict):
     # create datasets. provide train and eval data.
     dataset = Zeshel('../datasets/zeshel', {
         'TRAIN_WAY_PORTION': 0.9,
-        'MATCH_KEY': config['match_key']
+        'QUERY_USING_CONTEXT': config['context'],
+        'CANDIDATE_USING_TEXT': config['context']
     })
 
     # tensorizer. convert an example to tensors.
@@ -40,7 +42,7 @@ def main(config: dict):
     # embedding model. for predication.
     bert = Bert.from_pretrained('../pretrain/uncased_L-12_H-768_A-12', {
         'POOLING_METHOD': 'avg',
-        'FINETUNE_LAYER_RANGE': '9:12'
+        'FINETUNE_LAYER_RANGE': '8:12'
     })
 
     # siamese bert for training.
@@ -56,16 +58,16 @@ def main(config: dict):
         'adapter': adapter,
         'model': model,
         'DEVICE': torch.device(config['device']),
-        'TRAIN_BATCH_SIZE': 300,
-        'VALID_BATCH_SIZE': 1000,
-        'ROUND': 5
+        'TRAIN_BATCH_SIZE': 50,
+        'VALID_BATCH_SIZE': 500,
+        'ROUND': 2
     })
     # train start here.
     trainer.train()
 
     # train done, fetch bert model to prediction.
     tester = ZelPredictor(model, adapter, {
-        'TEST_BATCH_SIZE': 200,
+        'TEST_BATCH_SIZE': 100,
         'EMB_BATCH_SIZE': 1000,
         'DEVICE': torch.device(config['device'])
     })
@@ -78,13 +80,14 @@ def main(config: dict):
     for i in config['top_what']:
         print(f'we test zeshel here: top-{i}')
         tester.test(test_data, i)
+        sys.stdout.flush()
 
 if __name__ == '__main__':
-    for match_key, fixed_len in zip(['TEXT', 'TITLE'], [32, 16]):
+    for context, fixed_len in zip([1, 0], [72, 16]):
         main({
-            'match_key': match_key,
+            'context': bool(context),
             'fixed_len': fixed_len,
-            'device': 'cuda:2',
-            'top_what': [64, 32, 16, 8, 4, 2, 1],
-            'saved_file': f'./saved/zeshel_zel/{match_key}.bin'
+            'device': 'cuda:1',
+            'top_what': [100, 50, 20, 10, 5, 2, 1],
+            'saved_file': f'./saved/zeshel_zel/context_{context}.bin'
         })

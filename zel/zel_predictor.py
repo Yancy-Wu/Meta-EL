@@ -136,7 +136,7 @@ class ZelPredictor(Predictor):
         '''
             load prediction model from filename
         '''
-        device = conf.get(['DEVICE'])
+        device = conf.get('DEVICE')
         self = torch.load(fn, map_location=device)
         Config.__init__(self, conf)
         return self

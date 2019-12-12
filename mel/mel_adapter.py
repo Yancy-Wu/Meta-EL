@@ -15,7 +15,7 @@ class MelAdapter(Adapter):
         convert a list of task struct to tensors.
     '''
 
-    def __init__(self, support_tensorizer: Tensorizer, query_tensorizer):
+    def __init__(self, support_tensorizer: Tensorizer, query_tensorizer: Tensorizer):
         self.support_tensorizer = support_tensorizer
         self.query_tensorizer = query_tensorizer
 
@@ -44,7 +44,7 @@ class MelAdapter(Adapter):
             label_str = [way.y for way in task.support]
             supports += sum([way.shots for way in task.support], [])
             queries.append(task.query.x)
-            y.append(label_str.index(task.query.y))
+            y.append(label_str.index(task.query.y) if task.query.y in label_str else -1)
 
         # tensor generate.
         support_tensor_map = self._raw_list_to_tensors(self.support_tensorizer, supports, 'support')

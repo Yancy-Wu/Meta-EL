@@ -24,8 +24,8 @@ class Crossel(ZelDataset):
     # train way portion
     TRAIN_WAY_PORTION = 0.9
 
-    # match key
-    MATCH_KEY = 'TITLE'
+    # whether using context
+    CANDIDATE_USING_TEXT = False
 
     # document DataFrame: document_id - title - text
     # train DataFrame and valid DataFrame: mention_id - label_document_id - text
@@ -34,9 +34,25 @@ class Crossel(ZelDataset):
     _valid: pd.DataFrame = None
     _test: pd.DataFrame = None
 
+    @staticmethod
+    def _query_mention(q: pd.Series):
+        return q['MENTION']
+
+    @staticmethod
+    def _candidate_title(c: pd.Series):
+        return c['TITLE']
+
+    @staticmethod
+    def _candidate_desc(c: pd.Series):
+        return c['TITLE'] + ' [SEP] ' + c['TEXT']
+
     def __init__(self, root, conf=None):
         super().__init__(conf)
         kargs = {'orient': 'records', 'lines': True}
+
+        # set function
+        self._query = self._query_mention
+        self._candidate = self._candidate_desc if self.CANDIDATE_USING_TEXT else self._candidate_title
 
         # generate documents
         examples = pd.read_json(f'{root}/train.json', **kargs)
@@ -52,13 +68,13 @@ class Crossel(ZelDataset):
             return all candidates, contain id and value.
         '''
         id_list = self._kb['ID'].tolist()
-        val_list = self._kb[self.MATCH_KEY].tolist()
+        val_list = self._kb.apply(lambda c: self._candidate(c), axis=1).tolist()
         return [Candidate(_val, _id) for (_val, _id) in zip(val_list, id_list)]
 
     def _generate(self, mention_record: pd.Series, doc_record: pd.Series) -> TrainExample:
         # query: mention, candidate: doc title or other
-        query = mention_record['MENTION']
-        candidate = doc_record[self.MATCH_KEY]
+        query = self._query(mention_record)
+        candidate = self._candidate(doc_record)
         y = mention_record['ID'] == doc_record['ID']
         return TrainExample(query, candidate, y)
 
@@ -105,6 +121,6 @@ class Crossel(ZelDataset):
         examples = []
         progress = trange(0, len(self._test))
         for [_, record], _ in zip(self._test.iterrows(), progress):
-            examples.append(TestExample(record['MENTION'], record['ID']))
+            examples.append(TestExample(self._query(record), record['ID']))
         progress.close()
         return examples

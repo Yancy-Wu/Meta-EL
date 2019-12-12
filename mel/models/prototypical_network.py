@@ -10,10 +10,9 @@ from modules.protonet import Protonet
 
 class PrototypicalNetwork(nn.Module):
     '''
-        using bert as encoder, conbine with prototypical network.
-        `pretrain_bert_dir`: bert pretrained model location.
-        `config`: config['bert'] will be sent to bert model config.
-        see META_EL.modules.bert for detail config parameters.
+        using support encoder and query encoder, combine with prototypical network.
+        `support_model`: encoder for encoding support.
+        `query_model`: encoder for encoding query.
     '''
 
     def __init__(self, support_model: nn.Module, query_model: nn.Module):

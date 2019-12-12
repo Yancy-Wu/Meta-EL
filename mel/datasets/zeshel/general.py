@@ -1,14 +1,14 @@
 '''
     eval support set overlap with train support set slightly.
-    documents.json: ID ~ TEXT ~ TITLE
-    train/val/test.json: LCONTEXT ~ MENTION ~ RCONTEXT ~ ID
+    docs.json: ID ~ TEXT ~ TITLE
+    train/test.json: LCONTEXT ~ MENTION ~ RCONTEXT ~ ID
 '''
 import random
 import warnings
 from typing import List
 from tqdm import trange
 import pandas
-from zel.tester import Tester
+from base.predictor import Predictor
 from . import ZeshelDataset
 from .. import Way, Task
 
@@ -18,10 +18,11 @@ class GeneralZeshelDataset(ZeshelDataset):
         `root`: GeneralZeshelDataset dir location.
         `prediction`: Prediction model object.
     '''
+    # train way portion
+    TRAIN_WAY_PORTION = 0.9
 
-    # general mel must be 2 shots and 1 fixed query
+    # general mel must be 2 shots
     SHOTS_NUM_PRE_WAYS = None
-    QUERY_NUM_PRE_WAY = None
 
     # document DataFrame: ID - TEXT - TITLE
     _doc: pandas.DataFrame = None
@@ -30,22 +31,26 @@ class GeneralZeshelDataset(ZeshelDataset):
     _test: pandas.DataFrame = None
 
     # zel prediction model
-    tester: Tester = None
+    predictor: Predictor = None
 
-    def __init__(self, root: str, tester: Tester, conf=None):
-        super().__init__(root, conf)
-        self.tester = tester
+    def __init__(self, root: str, predictor: Predictor, conf=None):
+        super().__init__(conf)
+        self.predictor = predictor
 
         # check parameters.
-        if self.SHOTS_NUM_PRE_WAYS or self.QUERY_NUM_PRE_WAY:
+        if self.SHOTS_NUM_PRE_WAYS:
             warnings.warn('shots and query num will not work in general mel setting')
 
         # read data. set index.
         kargs = {'orient': 'records', 'lines': True}
-        self._doc = pandas.read_json(f'{root}/documents.json', **kargs).set_index('ID')
+        self._doc = pandas.read_json(f'{root}/docs.json', **kargs).set_index('ID', drop=False)
         self._train = pandas.read_json(f'{root}/train.json', **kargs)
-        self._valid = pandas.read_json(f'{root}/valid.json', **kargs)
         self._test = pandas.read_json(f'{root}/test.json', **kargs)
+
+        # divide data.
+        train_num = int(len(self._train) * self.TRAIN_WAY_PORTION)
+        self._valid = self._train[train_num:]
+        self._train = self._train[:train_num]
 
     # pylint: disable=arguments-differ
     def _generate_way(self, doc: pandas.Series) -> Way:
@@ -56,7 +61,7 @@ class GeneralZeshelDataset(ZeshelDataset):
         # given a mention record, create an task. set retain to True when eval and test.
         tasks = []
         progress = trange(0, len(pd))
-        predicted_doc_ids = self.tester.predict(pd['MENTION'].tolist(), self.WAYS_NUM_PRE_TASK)
+        predicted_doc_ids = self.predictor.predict(pd['MENTION'].tolist(), self.WAYS_NUM_PRE_TASK)
 
         # if retain origin candidates, maybe there exists non-correct shot in support set.
         for i in progress:
@@ -75,10 +80,10 @@ class GeneralZeshelDataset(ZeshelDataset):
         return tasks
 
     def train_data(self) -> List[Task]:
-        return self._create_task(self._train[:self.TRAIN_TASKS_NUM], False)
+        return self._create_task(self._train.sample(self.TRAIN_TASKS_NUM), False)
 
     def valid_data(self) -> List[Task]:
-        return self._create_task(self._valid[:self.VALID_TASKS_NUM], True)
+        return self._create_task(self._valid.sample(self.VALID_TASKS_NUM), True)
 
     def test_data(self) -> List[Task]:
         return self._create_task(self._test, True)
