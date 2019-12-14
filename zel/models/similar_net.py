@@ -42,6 +42,12 @@ class SimilarNet(nn.Module, Config):
         # save model.
         self.query_model = query_model
         self.candidate_model = candidate_model
+        # projection layer.
+        self.proj = nn.Sequential(
+            nn.Linear(3 * hidden_size, hidden_size, bias=self.USE_BIAS),
+            activation[self.ACT_NAME](),
+            nn.Linear(hidden_size, 2, bias=self.USE_BIAS)
+        )
 
     # pylint: disable=arguments-differ
     def forward(self, query_tensor_map: Dict[str, torch.LongTensor],
@@ -54,11 +60,12 @@ class SimilarNet(nn.Module, Config):
               `query_tensor_map` item shape: [batch_num, query_seq_len]
               `candidate_tensor_map` item shape`: [batch_num, candidate_seq_len]
               query_model and candidate_model return shape: [batch_num, hidden_size]
-              `return shape`: [batch_num, 2]
+              `return shape`: [batch_num]
         '''
         # generate all embeddings
         query_emb = self.query_model.forward(**query_tensor_map)
         candidate_embs = self.candidate_model.forward(**candidate_tensor_map)
-        cos = torch.cosine_similarity(query_emb, candidate_embs, dim=-1)
-        res_true = torch.unsqueeze(cos, -1)
-        return torch.cat([res_true, -res_true], dim=-1)
+        differ_embs = (query_emb - candidate_embs).abs()
+        # concat all embs and output probability
+        features = torch.cat([query_emb, candidate_embs, differ_embs], dim=-1)
+        return self.proj(features)

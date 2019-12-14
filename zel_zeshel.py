@@ -42,7 +42,7 @@ def main(config: dict):
     # embedding model. for predication.
     bert = Bert.from_pretrained('../pretrain/uncased_L-12_H-768_A-12', {
         'POOLING_METHOD': 'avg',
-        'FINETUNE_LAYER_RANGE': '8:12'
+        'FINETUNE_LAYER_RANGE': '9:12'
     })
 
     # siamese bert for training.
@@ -58,9 +58,9 @@ def main(config: dict):
         'adapter': adapter,
         'model': model,
         'DEVICE': torch.device(config['device']),
-        'TRAIN_BATCH_SIZE': 50,
+        'TRAIN_BATCH_SIZE': 300,
         'VALID_BATCH_SIZE': 500,
-        'ROUND': 2
+        'ROUND': 10
     })
     # train start here.
     trainer.train()
@@ -87,7 +87,7 @@ if __name__ == '__main__':
         main({
             'context': bool(context),
             'fixed_len': fixed_len,
-            'device': 'cuda:1',
-            'top_what': [100, 50, 20, 10, 5, 2, 1],
+            'device': 'cuda:0',
+            'top_what': [50, 20, 10, 5, 2, 1],
             'saved_file': f'./saved/zeshel_zel/context_{context}.bin'
         })

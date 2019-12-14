@@ -44,7 +44,7 @@ class Crossel(ZelDataset):
 
     @staticmethod
     def _candidate_desc(c: pd.Series):
-        return c['TITLE'] + ' [SEP] ' + c['TEXT']
+        return c['TEXT']
 
     def __init__(self, root, conf=None):
         super().__init__(conf)

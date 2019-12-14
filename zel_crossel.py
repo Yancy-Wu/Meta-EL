@@ -57,9 +57,9 @@ def main(config: dict):
         'adapter': adapter,
         'model': model,
         'DEVICE': torch.device(config['device']),
-        'TRAIN_BATCH_SIZE': 100,
+        'TRAIN_BATCH_SIZE': 150,
         'VALID_BATCH_SIZE': 500,
-        'ROUND': 2
+        'ROUND': 10
     })
 
     # train start here.
@@ -89,8 +89,8 @@ if __name__ == '__main__':
         main({
             'context': bool(context),
             'fixed_len': fixed_len,
-            'device': 'cuda:0',
+            'device': 'cuda:2',
             'lan': ['bn', 'jv', 'mr', 'pa', 'te', 'uk'],
-            'top_what': [100, 50, 20, 10, 5, 2, 1],
+            'top_what': [50, 20, 10, 5, 2, 1],
             'saved_file': f'./saved/crossel_zel/context_{context}.bin'
         })
