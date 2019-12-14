@@ -2,9 +2,11 @@
     test zel on zeshel datasets.
 '''
 
+import sys
+sys.path.append('./')
+
 import os
 import torch
-import sys
 from utils.trainer import Trainer
 from zel.models.similar_net import SimilarNet
 from zel.zel_predictor import ZelPredictor
