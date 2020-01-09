@@ -11,3 +11,5 @@
 change dir to this file location.
 using `[anaconda-path-dir]/bin/python ./run/zel_zeshel.py` to run code
 then model will automatic save to ./saved
+
+DATASET will be provided later.
